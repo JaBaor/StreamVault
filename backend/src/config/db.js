@@ -11,4 +11,4 @@ const pool = mysql.createPool({
   connectionLimit: 10
 });
 
-module.import = pool;
+module.exports = pool;

@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 
+const movieRoutes = require("./routes/movieRoutes");
+
 const app = express();  //create the server app
 
 //Midlleware
@@ -15,5 +17,7 @@ app.get("/", (req, res)=>{
     message: "Movie API running"
   });
 });
+
+app.use("/api/movies", movieRoutes);
 
 module.exports = app;
