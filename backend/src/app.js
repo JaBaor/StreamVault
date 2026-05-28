@@ -3,6 +3,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 
 const movieRoutes = require("./routes/movieRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();  //create the server app
 
@@ -18,6 +19,7 @@ app.get("/", (req, res)=>{
   });
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/movies", movieRoutes);
 
 module.exports = app;
