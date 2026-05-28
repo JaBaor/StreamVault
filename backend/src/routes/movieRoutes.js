@@ -11,7 +11,9 @@ const movieController = require("../controllers/movieController");
 });
 */
 router.get("/", movieController.getMovies);
-module.exports = router;
+
 router.post("/", verifyToken, authorizationAdmin, (req, res)=>{
   res.json({message: "Admin successfully acceessed protected route!"})
 })
+
+module.exports = router;
