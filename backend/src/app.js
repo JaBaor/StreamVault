@@ -4,8 +4,7 @@ const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const {errorHandler} = require("./middleware/errorHandler");
 
-const movieRoutes = require("./routes/movieRoutes");
-const authRoutes = require("./routes/authRoutes");
+const v1Router = require("./routes/index");
 
 const app = express();  //create the server app
 
@@ -25,8 +24,8 @@ app.get("/", (req, res)=>{
   });
 });
 
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/movies", movieRoutes);
+app.use("/api/v1", v1Router);
+
 
 app.use(errorHandler);
 

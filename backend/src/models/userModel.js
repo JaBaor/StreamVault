@@ -26,14 +26,15 @@ async function saveRefreshToken(userId, token, expiresAt){
 
 async function getUserByRefreshToken(token){
   const [rows] = await pool.query(
-    "SELECT *FROM users WHERE refresh_token = ?",
+    "SELECT * FROM users WHERE refresh_token = ?",
     [token]
   );
   return rows[0];
 }
   async function clearRefreshToken(userId){
     await pool.query(
-      "UPDATE Users GET refresh_token = NULL, refresh_token_expires = NULL WHERE user_id = ?"
+      "UPDATE users SET refresh_token = NULL, refresh_token_expires = NULL WHERE user_id = ?",
+      [userId]
     );
 }
 
