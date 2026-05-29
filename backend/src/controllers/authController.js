@@ -2,14 +2,14 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const userModel = require("../models/userModel");
-
+const { asyncHandler, createError } = require("../middleware/errorHandler");
 //Refresh token
 function generateRefreshToken(){
   return crypto.randomBytes(40).toString("hex");
 }
 
 //POST /api/v1/auth/register
-exports.register = async(req, res)=>{
+exports.register = async(req, res, next)=>{
   try{
     const {username, email, password, role} = req.body;
 
@@ -22,8 +22,7 @@ exports.register = async(req, res)=>{
 
     res.status(201).json({message: "User registered successfully", userId});
   } catch(error){
-    //TODO passes to global handler later
-    res.status(500).json({message: error.message})
+    next(error);
   }
 };
 
@@ -36,6 +35,7 @@ exports.login = async (req, res, next)=>{
     const user = await userModel.getUserByUsername(username);
     if(!user){
       return res.status(401).json({message: "Invalid credentials"});
+      
     }
 
     // 2. Compare password
@@ -45,8 +45,8 @@ exports.login = async (req, res, next)=>{
     }
     // 3. generate ACCESS token - short-lived JWT token and attach user's id and role to the token payload
     //The server never stored this. It signs it and trusts the signature later.
-    const token = jwt.sign(
-      { id: user.id, role: user.role},
+    const accessToken = jwt.sign(
+      { id: user.user_id, role: user.role},
       process.env.JWT_SECRET,
       { expiresIn: "15m"}
     );
@@ -73,8 +73,7 @@ exports.login = async (req, res, next)=>{
       },
     });
   } catch (error){
-    //TODO passes to global handler later
-    res.status(500).json({message: error.message});
+    next(error);
   }
 };
 
@@ -107,7 +106,7 @@ exports.refresh = async (req, res, next)=>{
 
     res.json({ accessToken });   //client replace its old access token
     } catch (error){
-      res.status(500).json({message: error.message});
+      next(error);
     }
   };
 

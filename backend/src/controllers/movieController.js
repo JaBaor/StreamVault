@@ -5,8 +5,6 @@ exports.getMovies = async (req, res)=>{
     const movies = await movieModel.getAllMovies();
     res.json(movies);
   } catch (error) {
-    res.status(500).json({
-      message: error.message
-    });
+    next(error);
   }
 };
