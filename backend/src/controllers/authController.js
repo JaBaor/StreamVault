@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const userModel = require("../models/userModel");
-const { asyncHandler, createError } = require("../middleware/errorHandler");
+const { ConflictError, UnauthorizedError } = require("../errors/errors");
 //Refresh token
 function generateRefreshToken(){
   return crypto.randomBytes(40).toString("hex");
@@ -24,10 +24,7 @@ exports.register = async(req, res, next)=>{
   } catch(error){
     // Duplicate username/email → MySQL error 1062
     if (error.code === "ER_DUP_ENTRY") {
-      return res.status(409).json({
-        code:    "DUPLICATE_ENTRY",
-        message: "Username or email already exists",
-      });
+      return next(new ConflictError("Username or email already exists"));
     }
     next(error);
   }
@@ -41,14 +38,14 @@ exports.login = async (req, res, next)=>{
     // 1. Find user
     const user = await userModel.getUserByUsername(username);
     if(!user){
-      return res.status(401).json({message: "Invalid credentials"});
+      return next(new UnauthorizedError("Invalid credentials"))
       
     }
 
     // 2. Compare password
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if(!isMatch){
-      return res.status(401).json({message:"Invalid credentials"});
+      return next(new UnauthorizedError("Invalid credentials"))
     }
     // 3. generate ACCESS token - short-lived JWT token and attach user's id and role to the token payload
     //The server never stored this. It signs it and trusts the signature later.
