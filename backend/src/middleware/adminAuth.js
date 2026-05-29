@@ -1,10 +1,10 @@
- function authorizeAdmin(req,res,next){
-  if(req.user.role !== "admin"){
-    return res.status(403).json({
-      message:"Access denied"
-    });
-  }
+const { ForbiddenError } = require("../errors/errors");
 
-  next();
+function authorizeAdmin(req,res,next){
+if(!req.user.role !== "admin"){
+  return next(new ForbiddenError("Admin access required"))
+}
+
+next();
 };
- module.exports = authorizeAdmin;
+module.exports = authorizeAdmin;
