@@ -22,6 +22,13 @@ exports.register = async(req, res, next)=>{
 
     res.status(201).json({message: "User registered successfully", userId});
   } catch(error){
+    // Duplicate username/email → MySQL error 1062
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        code:    "DUPLICATE_ENTRY",
+        message: "Username or email already exists",
+      });
+    }
     next(error);
   }
 };
