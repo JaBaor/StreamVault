@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const authorizationAdmin = require('../middleware/adminAuth');
+const adminAuth = require('../middleware/adminAuth');
 const verifyToken = require('../middleware/verifyToken');
 const movieController = require("../controllers/movieController");
 const validate = require("../middleware/validate");
@@ -20,8 +20,8 @@ router.get("/:id",     movieIdParam,                   validate, movieController
 
 
 // ADMIN only — require both tokens: valid user + admin role
-router.post(  "/",     verifyToken, authorizationAdmin, createMovieRules, validate, movieController.createMovie);
-router.put(   "/:id",  verifyToken, authorizationAdmin, movieIdParam, updateMovieRules, validate, movieController.updateMovie);
-router.delete("/:id",  verifyToken, authorizationAdmin, movieIdParam,                  validate, movieController.deleteMovie);
+router.post(  "/",     verifyToken, adminAuth, createMovieRules, validate, movieController.createMovie);
+router.put(   "/:id",  verifyToken, adminAuth, movieIdParam, updateMovieRules, validate, movieController.updateMovie);
+router.delete("/:id",  verifyToken, adminAuth, movieIdParam,                  validate, movieController.deleteMovie);
 
 module.exports = router;

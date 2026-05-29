@@ -44,7 +44,8 @@ async function getAllMovies({ page = 1, limit = 10, genre_id, release_year, sort
            m.duration, m.poster_url, m.trailer_url, m.view_count,
            m.created_at, g.name AS genre_name
     FROM   Movies m
-    LEFT JOIN Genres g ON m.genre_id = g.genre_id
+    LEFT JOIN movie_genres mg ON m.movie_id = mg.genre_id
+    LEFT JOIN Genres g       ON mg.genre_id = g.genre_id
     WHERE  ${whereClause}
     ORDER BY ${orderClause}
     LIMIT  ? OFFSET ?
@@ -92,11 +93,12 @@ async function searchMovies({ q, page = 1, limit = 10 }) {
   const searchTerm = `%${q}%`;   // wrap in % for "contains" search
 
   const dataQuery = `
-    SELECT m.movie_id, m.title, m.description, m.release_year,
-           m.duration, m.poster_url, m.view_count,
-           g.name AS genre_name
+   SELECT m.movie_id, m.title, m.description, m.release_year,
+       m.duration, m.poster_url, m.view_count,
+       g.name AS genre_name
     FROM   Movies m
-    LEFT JOIN Genres g ON m.genre_id = g.genre_id
+    LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
+    LEFT JOIN Genres g       ON mg.genre_id = g.genre_id
     WHERE  m.status = 'active'
       AND  (m.title LIKE ? OR m.description LIKE ?)
     ORDER BY m.view_count DESC
