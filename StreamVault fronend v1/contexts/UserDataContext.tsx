@@ -1,0 +1,153 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { getItem, setItem } from "@/lib/storage";
+import type { Notification, WatchHistoryItem } from "@/lib/types";
+import { useAuth } from "./AuthContext";
+
+interface UserDataContextValue {
+  watchlist: string[];
+  history: WatchHistoryItem[];
+  notifications: Notification[];
+  toggleWatchlist: (animeId: string) => void;
+  isInWatchlist: (animeId: string) => boolean;
+  addToHistory: (item: Omit<WatchHistoryItem, "watchedAt">) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+}
+
+const UserDataContext = createContext<UserDataContextValue | null>(null);
+
+const DEFAULT_NOTIFICATIONS: Notification[] = [
+  {
+    id: "n1",
+    title: "New episode available",
+    message: "Blade Chronicle Episode 4 is now streaming.",
+    read: false,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+  },
+  {
+    id: "n2",
+    title: "Premium sale",
+    message: "Get 30% off Premium this week only.",
+    read: true,
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+  },
+];
+
+function storageKey(userId: string | null, key: string) {
+  return userId ? `${key}:${userId}` : key;
+}
+
+export function UserDataProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.id ?? null;
+
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [history, setHistory] = useState<WatchHistoryItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>(DEFAULT_NOTIFICATIONS);
+
+  useEffect(() => {
+    setWatchlist(getItem(storageKey(uid, "watchlist"), []));
+    setHistory(getItem(storageKey(uid, "history"), []));
+    if (uid) {
+      setNotifications(getItem(storageKey(uid, "notifications"), DEFAULT_NOTIFICATIONS));
+    }
+  }, [uid]);
+
+  const persistWatchlist = useCallback(
+    (next: string[]) => {
+      setWatchlist(next);
+      if (uid) setItem(storageKey(uid, "watchlist"), next);
+    },
+    [uid]
+  );
+
+  const toggleWatchlist = useCallback(
+    (animeId: string) => {
+      persistWatchlist(
+        watchlist.includes(animeId)
+          ? watchlist.filter((id) => id !== animeId)
+          : [...watchlist, animeId]
+      );
+    },
+    [watchlist, persistWatchlist]
+  );
+
+  const isInWatchlist = useCallback(
+    (animeId: string) => watchlist.includes(animeId),
+    [watchlist]
+  );
+
+  const addToHistory = useCallback(
+    (item: Omit<WatchHistoryItem, "watchedAt">) => {
+      const entry: WatchHistoryItem = { ...item, watchedAt: new Date().toISOString() };
+      const next = [
+        entry,
+        ...history.filter(
+          (h) => !(h.animeId === item.animeId && h.episodeId === item.episodeId)
+        ),
+      ].slice(0, 50);
+      setHistory(next);
+      if (uid) setItem(storageKey(uid, "history"), next);
+    },
+    [history, uid]
+  );
+
+  const markNotificationRead = useCallback(
+    (id: string) => {
+      const next = notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      );
+      setNotifications(next);
+      if (uid) setItem(storageKey(uid, "notifications"), next);
+    },
+    [notifications, uid]
+  );
+
+  const markAllNotificationsRead = useCallback(() => {
+    const next = notifications.map((n) => ({ ...n, read: true }));
+    setNotifications(next);
+    if (uid) setItem(storageKey(uid, "notifications"), next);
+  }, [notifications, uid]);
+
+  const value = useMemo(
+    () => ({
+      watchlist,
+      history,
+      notifications,
+      toggleWatchlist,
+      isInWatchlist,
+      addToHistory,
+      markNotificationRead,
+      markAllNotificationsRead,
+    }),
+    [
+      watchlist,
+      history,
+      notifications,
+      toggleWatchlist,
+      isInWatchlist,
+      addToHistory,
+      markNotificationRead,
+      markAllNotificationsRead,
+    ]
+  );
+
+  return (
+    <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>
+  );
+}
+
+export function useUserData() {
+  const ctx = useContext(UserDataContext);
+  if (!ctx) throw new Error("useUserData must be used within UserDataProvider");
+  return ctx;
+}
