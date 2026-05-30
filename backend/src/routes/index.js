@@ -9,6 +9,7 @@ const watchlistRoutes    = require("./watchlistRoutes");
 const reviewRoutes       = require("./reviewRoutes");
 const userRoutes         = require("./userRoutes");
 const adminRoutes        = require("./adminRoutes");
+const subscriptionRoutes = require("./subscriptionRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/movies", movieRoutes);
@@ -18,5 +19,6 @@ router.use("/watchlist", watchlistRoutes);
 router.use("/movies/:movieId", reviewRoutes);   // ← mergeParams on reviewRoutes handles :movieId
 router.use("/users", userRoutes);
 router.use("/admin", adminRoutes); 
+router.use("/subscriptions",   subscriptionRoutes);
 
 module.exports = router;

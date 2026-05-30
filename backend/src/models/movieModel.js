@@ -77,10 +77,12 @@ async function getAllMovies({ page = 1, limit = 10, genre_id, release_year, sort
 //GET by id 
 async function getMovieById(movieId) {
   const [rows] = await pool.query(
-    `SELECT m.*, g.name AS genre_name
+    `SELECT m.*, GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
      FROM   Movies m
-     LEFT JOIN Genres g ON m.genre_id = g.genre_id
-     WHERE  m.movie_id = ? AND m.status = 'active'`,
+     LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
+     LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
+     WHERE  m.movie_id = ? AND m.status = 'active'
+     GROUP BY m.movie_id`,
     [movieId]
   );
   return rows[0]; // undefined if not found

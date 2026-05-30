@@ -9,7 +9,7 @@ function validate(req, res, next){
       code: "VALIDATION_ERROR",
       message: "Validation failed",
       details: errors.array().map(err =>({
-        field: arr.path,    //which field failed?
+        field: err.path,    //which field failed?
         message: err.msg,
       })),
     });
