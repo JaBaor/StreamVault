@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/contexts/UserDataContext";
-import { getCatalogAnime } from "@/lib/catalog";
-import { getEpisodesForAnime } from "@/lib/catalog";
+import { getCatalogAnime, getEpisodesForAnime } from "@/lib/catalog";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -38,7 +37,7 @@ export default function DashboardPage() {
       </div>
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 sm:col-span-2 lg:col-span-3">
         <p className="text-sm font-semibold text-zinc-400">Plan</p>
-        <p className="mt-1 text-lg text-white capitalize">
+        <p className="mt-1 text-lg capitalize text-white">
           {user?.subscriptionPlan ?? "free"} member
         </p>
         <Link href="/dashboard/subscription" className="mt-2 inline-block text-sm text-[var(--sv-orange)]">

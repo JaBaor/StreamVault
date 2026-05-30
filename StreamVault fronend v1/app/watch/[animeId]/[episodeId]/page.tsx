@@ -9,11 +9,7 @@ import { EpisodeNav } from "@/components/video/EpisodeNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/contexts/UserDataContext";
 import { canWatchEpisode } from "@/lib/access";
-import {
-  getAnimeById,
-  getEpisode,
-  getEpisodesForAnime,
-} from "@/lib/catalog";
+import { getAnimeById, getEpisode, getEpisodesForAnime } from "@/lib/catalog";
 
 const VideoPlayer = dynamic(
   () => import("@/components/video/VideoPlayer").then((m) => m.VideoPlayer),
@@ -85,9 +81,7 @@ export default function WatchPage() {
           {anime.title}
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-zinc-300">
-          Episode {episode.number}
-        </span>
+        <span className="text-zinc-300">Episode {episode.number}</span>
       </nav>
 
       {!access.allowed && access.reason ? (

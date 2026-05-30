@@ -67,7 +67,7 @@ export function Header() {
           </div>
         </nav>
 
-        <form action="/search" className="hidden flex-1 max-w-md lg:block">
+        <form action="/search" className="hidden max-w-md flex-1 lg:block">
           <input
             name="q"
             type="search"

@@ -7,15 +7,12 @@ import { Badge } from "@/components/ui/Badge";
 
 export default function AdminUsersPage() {
   const registered = getItem<User[]>("registered-users", []);
-  const users = [
-    ...DEMO_ACCOUNTS.map((a) => a.user),
-    ...registered,
-  ];
+  const users = [...DEMO_ACCOUNTS.map((a) => a.user), ...registered];
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-white">User management</h2>
-      <p className="mt-1 text-sm text-zinc-500">Demo + registered users (read-only list).</p>
+      <p className="mt-1 text-sm text-zinc-500">Demo + registered users (local).</p>
       <div className="mt-4 overflow-x-auto rounded-xl border border-zinc-800">
         <table className="w-full min-w-[500px] text-left text-sm">
           <thead className="bg-zinc-900 text-zinc-400">
