@@ -1,5 +1,6 @@
 const movieModel = require("../models/movieModel");
 const { NotFoundError, ForbiddenError } = require("../errors/errors");
+const logAudit = require("../utils/auditLog");
 
 exports.getAllMovies = async (req, res) => {
   const { page, limit, genre_id, release_year, sort } = req.query;
@@ -31,6 +32,13 @@ exports.getMovieById = async (req, res) => {
 //POST /api/v1/movies — admin only 
 exports.createMovie = async (req, res) => {
   const movie = await movieModel.createMovie(req.body);
+  await logAudit({
+    userId:     req.user.id,
+    action:     "CREATE",
+    entityType: "Movie",
+    entityId:   movie.movie_id,
+    details:    { title: movie.title },
+  });
   res.status(201).json(movie);
 };
 
@@ -40,6 +48,14 @@ exports.updateMovie = async (req, res) => {
   if (!existing) throw new NotFoundError("Movie");
 
   const updated = await movieModel.updateMovie(req.params.id, req.body);
+  await logAudit({
+    userId:     req.user.id,
+    action:     "CREATE",
+    entityType: "Movie",
+    entityId:   movie.movie_id,
+    details:    { title: movie.title },
+  });
+
   res.json(updated);
 };
 
@@ -47,6 +63,13 @@ exports.updateMovie = async (req, res) => {
 exports.deleteMovie = async (req, res) => {
   const deleted = await movieModel.softDeleteMovie(req.params.id);
   if (!deleted) throw new NotFoundError("Movie");
+  await logAudit({
+    userId:     req.user.id,
+    action:     "CREATE",
+    entityType: "Movie",
+    entityId:   movie.movie_id,
+    details:    { title: movie.title },
+  });
 
   res.json({ message: "Movie deleted successfully" });
 };

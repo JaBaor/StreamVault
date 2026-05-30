@@ -1,6 +1,6 @@
 const genreModel = require("../models/genreModel");
 const { NotFoundError, ConflictError } = require("../errors/errors");
-
+const logAudit = require("../utils/auditLog");
 // GET /api/v1/genres 
 exports.getAllGenres = async (req, res) => {
   const genres = await genreModel.getAllGenres();
@@ -18,6 +18,13 @@ exports.getGenreById = async (req, res) => {
 exports.createGenre = async (req, res) => {
   // ER_DUP_ENTRY from MySQL is caught by errorHandler automatically
   const genre = await genreModel.createGenre(req.body.name);
+  await logAudit({
+    userId:     req.user.id,
+    action:     "CREATE",
+    entityType: "Movie",
+    entityId:   movie.movie_id,
+    details:    { title: movie.title },
+  });
   res.status(201).json(genre);
 };
 
@@ -27,6 +34,13 @@ exports.updateGenre = async (req, res) => {
   if (!existing) throw new NotFoundError("Genre");
 
   const updated = await genreModel.updateGenre(req.params.id, req.body.name);
+  await logAudit({
+    userId:     req.user.id,
+    action:     "CREATE",
+    entityType: "Movie",
+    entityId:   movie.movie_id,
+    details:    { title: movie.title },
+  });
   res.json(updated);
 };
 
@@ -44,5 +58,12 @@ exports.deleteGenre = async (req, res) => {
   }
 
   await genreModel.deleteGenre(req.params.id);
+  await logAudit({
+    userId:     req.user.id,
+    action:     "CREATE",
+    entityType: "Movie",
+    entityId:   movie.movie_id,
+    details:    { title: movie.title },
+  });
   res.json({ message: "Genre deleted successfully" });
 };
