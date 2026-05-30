@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import {
-  getCatalogAnime,
-  saveCatalogAnime,
-} from "@/lib/catalog";
+import { getCatalogAnime, saveCatalogAnime } from "@/lib/catalog";
 import type { Anime } from "@/lib/types";
 
 export default function AdminVideosPage() {

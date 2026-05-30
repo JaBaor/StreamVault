@@ -14,10 +14,7 @@ export default function AdminDashboardPage() {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Anime titles" value={anime.length} />
       <StatCard label="Genres" value={genres.length} />
-      <StatCard
-        label="Users"
-        value={DEMO_ACCOUNTS.length + registered.length}
-      />
+      <StatCard label="Users" value={DEMO_ACCOUNTS.length + registered.length} />
       <StatCard label="Premium shows" value={anime.filter((a) => a.isPremium).length} />
     </div>
   );

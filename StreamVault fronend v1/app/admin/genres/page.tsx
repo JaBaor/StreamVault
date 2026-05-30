@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import {
-  getCatalogGenres,
-  saveCatalogGenres,
-} from "@/lib/catalog";
+import { getCatalogGenres, saveCatalogGenres } from "@/lib/catalog";
 import type { Genre } from "@/lib/types";
 
 export default function AdminGenresPage() {
@@ -50,10 +47,7 @@ export default function AdminGenresPage() {
       </div>
       <ul className="mt-4 divide-y divide-zinc-800 rounded-xl border border-zinc-800">
         {list.map((g) => (
-          <li
-            key={g.id}
-            className="flex items-center justify-between px-4 py-3"
-          >
+          <li key={g.id} className="flex items-center justify-between px-4 py-3">
             <div>
               <p className="font-medium text-white">{g.name}</p>
               <p className="text-xs text-zinc-500">/{g.slug}</p>
