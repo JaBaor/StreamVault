@@ -4,11 +4,10 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
-import { DEMO_ACCOUNTS } from "@/lib/mock-data";
+import { apiFetch, clearAccessToken, setAccessToken } from "@/lib/api";
 import { getItem, removeItem, setItem } from "@/lib/storage";
 import type { User, UserRole } from "@/lib/types";
 
@@ -30,66 +29,75 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+type BackendUser = {
+  id: number | string;
+  username?: string;
+  email?: string;
+  role?: "member" | "admin" | string;
+};
 
-  useEffect(() => {
-    setUser(getItem<User | null>("user", null));
-    setIsLoading(false);
-  }, []);
+function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
+  const role: UserRole = user.role === "admin" ? "admin" : "subscriber";
+  return {
+    id: String(user.id),
+    email: user.email ?? fallbackEmail,
+    displayName: user.username ?? user.email ?? fallbackEmail,
+    role,
+    subscriptionPlan: role === "admin" ? "premium" : "free",
+  };
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(() =>
+    getItem<User | null>("user", null)
+  );
+  const [isLoading] = useState(false);
 
   const login = useCallback(async (email: string, password: string) => {
-    const account = DEMO_ACCOUNTS.find(
-      (a) => a.email.toLowerCase() === email.toLowerCase() && a.password === password
-    );
-    if (account) {
-      setUser(account.user);
-      setItem("user", account.user);
+    try {
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: email, password }),
+      });
+      setAccessToken(data.accessToken);
+      const nextUser = mapBackendUser(data.user, email);
+      setUser(nextUser);
+      setItem("user", nextUser);
       return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid username or password.",
+      };
     }
-    const stored = getItem<User[]>("registered-users", []);
-    const found = stored.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
-    const cred = getItem<Record<string, string>>("passwords", {});
-    if (found && cred[found.id] === password) {
-      setUser(found);
-      setItem("user", found);
-      return { ok: true };
-    }
-    return { ok: false, error: "Invalid email or password." };
   }, []);
 
   const register = useCallback(
     async (email: string, password: string, displayName: string) => {
-      const exists =
-        DEMO_ACCOUNTS.some((a) => a.email.toLowerCase() === email.toLowerCase()) ||
-        getItem<User[]>("registered-users", []).some(
-          (u) => u.email.toLowerCase() === email.toLowerCase()
-        );
-      if (exists) return { ok: false, error: "Email already registered." };
-      const newUser: User = {
-        id: `u-${Date.now()}`,
-        email,
-        displayName,
-        role: "subscriber",
-        subscriptionPlan: "free",
-      };
-      const users = getItem<User[]>("registered-users", []);
-      users.push(newUser);
-      setItem("registered-users", users);
-      const cred = getItem<Record<string, string>>("passwords", {});
-      cred[newUser.id] = password;
-      setItem("passwords", cred);
-      setUser(newUser);
-      setItem("user", newUser);
-      return { ok: true };
+      try {
+        await apiFetch("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({
+            username: displayName,
+            email,
+            password,
+            role: "member",
+          }),
+        });
+        return login(displayName, password);
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Registration failed.",
+        };
+      }
     },
-    []
+    [login]
   );
 
   const logout = useCallback(() => {
+    void apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
+    clearAccessToken();
     setUser(null);
     removeItem("user");
   }, []);

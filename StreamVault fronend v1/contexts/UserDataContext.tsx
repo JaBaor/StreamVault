@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { apiFetch } from "@/lib/api";
 import { getItem, setItem } from "@/lib/storage";
 import type { Notification, WatchHistoryItem } from "@/lib/types";
 import { useAuth } from "./AuthContext";
@@ -55,10 +56,42 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>(DEFAULT_NOTIFICATIONS);
 
   useEffect(() => {
-    setWatchlist(getItem(storageKey(uid, "watchlist"), []));
-    setHistory(getItem(storageKey(uid, "history"), []));
+    queueMicrotask(() => {
+      setWatchlist(getItem(storageKey(uid, "watchlist"), []));
+      setHistory(getItem(storageKey(uid, "history"), []));
+      if (uid) {
+        setNotifications(getItem(storageKey(uid, "notifications"), DEFAULT_NOTIFICATIONS));
+      }
+    });
     if (uid) {
-      setNotifications(getItem(storageKey(uid, "notifications"), DEFAULT_NOTIFICATIONS));
+      void apiFetch("/watchlist?limit=100")
+        .then((result) => {
+          const ids = (result.data ?? []).map((movie: { movie_id: number | string }) =>
+            String(movie.movie_id)
+          );
+          setWatchlist(ids);
+          setItem(storageKey(uid, "watchlist"), ids);
+        })
+        .catch(() => undefined);
+      void apiFetch("/watch-history?limit=100")
+        .then((result) => {
+          const items = (result.data ?? []).map(
+            (row: {
+              movie_id: number | string;
+              history_id?: number | string;
+              progress_seconds?: number;
+              watched_at?: string;
+            }) => ({
+              animeId: String(row.movie_id),
+              episodeId: "full",
+              progress: row.progress_seconds ?? 0,
+              watchedAt: row.watched_at ?? new Date().toISOString(),
+            })
+          );
+          setHistory(items);
+          setItem(storageKey(uid, "history"), items);
+        })
+        .catch(() => undefined);
     }
   }, [uid]);
 
@@ -72,13 +105,21 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
   const toggleWatchlist = useCallback(
     (animeId: string) => {
+      const inList = watchlist.includes(animeId);
       persistWatchlist(
-        watchlist.includes(animeId)
+        inList
           ? watchlist.filter((id) => id !== animeId)
           : [...watchlist, animeId]
       );
+      if (uid) {
+        void apiFetch(`/watchlist/${animeId}`, {
+          method: inList ? "DELETE" : "POST",
+        }).catch(() => {
+          persistWatchlist(watchlist);
+        });
+      }
     },
-    [watchlist, persistWatchlist]
+    [watchlist, persistWatchlist, uid]
   );
 
   const isInWatchlist = useCallback(
@@ -97,6 +138,15 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       ].slice(0, 50);
       setHistory(next);
       if (uid) setItem(storageKey(uid, "history"), next);
+      if (uid) {
+        void apiFetch("/watch-history", {
+          method: "POST",
+          body: JSON.stringify({
+            movieId: Number(item.animeId),
+            progressSeconds: Math.round(item.progress),
+          }),
+        }).catch(() => undefined);
+      }
     },
     [history, uid]
   );

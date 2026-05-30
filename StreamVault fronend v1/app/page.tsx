@@ -1,11 +1,13 @@
 import { ContentRow } from "@/components/video/ContentRow";
 import { HeroBanner } from "@/components/video/HeroBanner";
-import { getCatalogAnime } from "@/lib/catalog";
-import { genres } from "@/lib/mock-data";
+import { fetchCatalogAnime, fetchCatalogGenres } from "@/lib/catalog";
 import Link from "next/link";
 
-export default function HomePage() {
-  const all = getCatalogAnime();
+export default async function HomePage() {
+  const [all, genres] = await Promise.all([
+    fetchCatalogAnime(),
+    fetchCatalogGenres(),
+  ]);
   const featured = all.filter((a) => a.featured);
   const hero = featured[0] ?? all[0];
   const trending = [...all].sort((a, b) => b.rating - a.rating).slice(0, 8);

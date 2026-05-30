@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VideoCard } from "@/components/video/VideoCard";
-import { getCatalogAnime, getGenreBySlug } from "@/lib/catalog";
+import { fetchCatalogAnime, fetchCatalogGenres } from "@/lib/catalog";
 
 export default async function GenrePage({
   params,
@@ -9,10 +9,14 @@ export default async function GenrePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const genre = getGenreBySlug(slug);
+  const [genres, all] = await Promise.all([
+    fetchCatalogGenres(),
+    fetchCatalogAnime(),
+  ]);
+  const genre = genres.find((g) => g.slug === slug || g.id === slug);
   if (!genre) notFound();
 
-  const shows = getCatalogAnime().filter((a) => a.genreIds.includes(genre.id));
+  const shows = all.filter((a) => a.genreIds.includes(genre.id));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

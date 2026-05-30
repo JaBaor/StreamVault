@@ -11,7 +11,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const result = await login(email, password);
+    const result = await login(username, password);
     setLoading(false);
     if (result.ok) {
       const redirect = params.get("redirect") ?? (params.get("admin") ? "/admin" : "/");
@@ -36,13 +36,13 @@ function LoginForm() {
       <p className="mt-2 text-sm text-zinc-400">Log in to continue watching.</p>
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <Input
-          label="Email"
-          type="email"
+          label="Username"
+          type="text"
           required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="user@streamvault.dev"
+          autoComplete="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="your_username"
         />
         <Input
           label="Password"
@@ -65,8 +65,7 @@ function LoginForm() {
       </p>
       <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-xs text-zinc-500">
         <p className="font-semibold text-zinc-400">Demo accounts</p>
-        <p className="mt-1">Subscriber: user@streamvault.dev / user123</p>
-        <p>Admin: admin@streamvault.dev / admin123</p>
+        <p className="mt-1">Use the username and password stored in your backend database.</p>
       </div>
     </div>
   );

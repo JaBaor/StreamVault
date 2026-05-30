@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AnimeDetailClient } from "./AnimeDetailClient";
-import { getAnimeBySlug, getEpisodesForAnime } from "@/lib/catalog";
-import { genres } from "@/lib/mock-data";
+import {
+  fetchAnimeBySlug,
+  fetchCatalogGenres,
+  fetchEpisodesForAnime,
+} from "@/lib/catalog";
 
 export default async function AnimeDetailPage({
   params,
@@ -10,10 +13,13 @@ export default async function AnimeDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const anime = getAnimeBySlug(slug);
+  const anime = await fetchAnimeBySlug(slug);
   if (!anime) notFound();
 
-  const eps = getEpisodesForAnime(anime.id);
+  const [eps, genres] = await Promise.all([
+    fetchEpisodesForAnime(anime.id),
+    fetchCatalogGenres(),
+  ]);
   const animeGenres = genres.filter((g) => anime.genreIds.includes(g.id));
   const firstEp = eps[0];
 

@@ -3,13 +3,21 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccessGate } from "@/components/video/AccessGate";
 import { EpisodeNav } from "@/components/video/EpisodeNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/contexts/UserDataContext";
 import { canWatchEpisode } from "@/lib/access";
-import { getAnimeById, getEpisode, getEpisodesForAnime } from "@/lib/catalog";
+import {
+  fetchAnimeById,
+  fetchEpisodesForAnime,
+  fetchWatchEpisode,
+  getAnimeById,
+  getEpisode,
+  getEpisodesForAnime,
+} from "@/lib/catalog";
+import type { Anime, Episode } from "@/lib/types";
 
 const VideoPlayer = dynamic(
   () => import("@/components/video/VideoPlayer").then((m) => m.VideoPlayer),
@@ -30,20 +38,62 @@ export default function WatchPage() {
   const episodeId = params.episodeId as string;
   const { user, isSubscriber } = useAuth();
   const { addToHistory, history } = useUserData();
-
-  const anime = getAnimeById(animeId);
-  const episode = getEpisode(animeId, episodeId);
-  const episodes = useMemo(
-    () => (anime ? getEpisodesForAnime(anime.id) : []),
-    [anime]
+  const [loadedAnime, setLoadedAnime] = useState<Anime | undefined>(() =>
+    getAnimeById(animeId)
   );
+  const [loadedEpisodes, setLoadedEpisodes] = useState<Episode[]>(() =>
+    getEpisodesForAnime(animeId)
+  );
+  const [playableEpisode, setPlayableEpisode] = useState<Episode | undefined>();
+  const [accessReason, setAccessReason] = useState<"login" | "premium" | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const anime = loadedAnime;
+  const fallbackEpisode = getEpisode(animeId, episodeId);
+  const episode =
+    playableEpisode ??
+    loadedEpisodes.find((ep) => ep.id === episodeId) ??
+    fallbackEpisode;
+  const episodes = useMemo(
+    () => (loadedEpisodes.length ? loadedEpisodes : anime ? getEpisodesForAnime(anime.id) : []),
+    [loadedEpisodes, anime]
+  );
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([fetchAnimeById(animeId), fetchEpisodesForAnime(animeId)])
+      .then(async ([nextAnime, nextEpisodes]) => {
+        if (!active) return;
+        setAccessReason(undefined);
+        setPlayableEpisode(undefined);
+        setLoadedAnime(nextAnime);
+        setLoadedEpisodes(nextEpisodes);
+        const publicEpisode = nextEpisodes.find((ep) => ep.id === episodeId);
+        if (publicEpisode) {
+          try {
+            const playable = await fetchWatchEpisode(animeId);
+            if (active && playable) setPlayableEpisode(playable);
+          } catch {
+            if (active) setAccessReason(user ? "premium" : "login");
+          }
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [animeId, episodeId, user]);
 
   const historyItem = history.find(
     (h) => h.animeId === animeId && h.episodeId === episodeId
   );
 
   const access = episode
-    ? canWatchEpisode(episode, user, isSubscriber)
+    ? accessReason
+      ? { allowed: false, reason: accessReason }
+      : canWatchEpisode(episode, user, isSubscriber)
     : { allowed: false };
 
   const handleProgress = useCallback(
@@ -62,6 +112,10 @@ export default function WatchPage() {
     const next = episodes[idx + 1];
     if (next) router.push(`/watch/${animeId}/${next.id}`);
   }, [episode, episodes, animeId, router]);
+
+  if (isLoading && !anime) {
+    return <div className="p-12 text-center text-zinc-500">Loading...</div>;
+  }
 
   if (!anime || !episode) {
     return (

@@ -18,8 +18,12 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (!/^[a-zA-Z0-9_]{3,50}$/.test(displayName)) {
+      setError("Username must be 3-50 characters and use only letters, numbers, and underscores.");
+      return;
+    }
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("Password must be at least 8 characters with one uppercase letter and one number.");
       return;
     }
     setLoading(true);
@@ -36,8 +40,9 @@ export default function RegisterPage() {
       <p className="mt-2 text-sm text-zinc-400">Free account — watch and save your list.</p>
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <Input
-          label="Display name"
+          label="Username"
           required
+          autoComplete="username"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
         />
@@ -52,7 +57,8 @@ export default function RegisterPage() {
           label="Password"
           type="password"
           required
-          minLength={6}
+          minLength={8}
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />

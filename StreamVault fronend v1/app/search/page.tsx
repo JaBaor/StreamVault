@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { VideoCard } from "@/components/video/VideoCard";
-import { getCatalogAnime, getCatalogGenres } from "@/lib/catalog";
+import { fetchCatalogAnime, fetchCatalogGenres, getCatalogAnime, getCatalogGenres } from "@/lib/catalog";
 import { genres as defaultGenres } from "@/lib/mock-data";
+import type { Anime, Genre } from "@/lib/types";
 
 function SearchContent() {
   const params = useSearchParams();
@@ -14,9 +15,16 @@ function SearchContent() {
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState<"" | "ongoing" | "completed">("");
   const [sort, setSort] = useState<"rating" | "year" | "title">("rating");
+  const [all, setAll] = useState<Anime[]>(() => getCatalogAnime());
+  const [genreList, setGenreList] = useState<Genre[]>(() => {
+    const local = getCatalogGenres();
+    return local.length ? local : defaultGenres;
+  });
 
-  const all = getCatalogAnime();
-  const genreList = getCatalogGenres().length ? getCatalogGenres() : defaultGenres;
+  useEffect(() => {
+    void fetchCatalogAnime().then(setAll).catch(() => undefined);
+    void fetchCatalogGenres().then(setGenreList).catch(() => undefined);
+  }, []);
 
   const results = useMemo(() => {
     let list = [...all];
