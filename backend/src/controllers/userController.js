@@ -1,0 +1,56 @@
+// controllers/userController.js
+
+const bcrypt     = require("bcrypt");
+const userModel  = require("../models/userModel");
+const { BadRequestError, UnauthorizedError } = require("../errors/errors");
+
+//GET /api/v1/users/me 
+// req.user.id comes from verifyToken — the JWT already has the user id baked in.
+
+exports.getMe = async (req, res) => {
+  const user = await userModel.getUserById(req.user.id);
+  res.json(user);
+};
+
+//PUT /api/v1/users/me 
+exports.updateMe = async (req, res) => {
+  const updated = await userModel.updateProfile(req.user.id, req.body);
+  res.json(updated);
+  // ER_DUP_ENTRY (duplicate username/email) is caught by errorHandler automatically
+};
+
+//PUT /api/v1/users/me/password 
+exports.changePassword = async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  // Must fetch the row WITH password_hash to verify the old password
+  const user = await userModel.getUserWithPasswordById(req.user.id);
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+  if (!isMatch) {
+    throw new UnauthorizedError("Current password is incorrect");
+  }
+
+  if (oldPassword === newPassword) {
+    throw new BadRequestError("New password must be different from current password");
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await userModel.updatePassword(req.user.id, newHash);
+
+  res.json({ message: "Password updated successfully" });
+};
+
+// POST /api/v1/users/me/avatar 
+exports.uploadAvatar = async (req, res) => {
+  if (!req.file) {
+    throw new BadRequestError("No image file provided");
+  }
+
+  // Build the public URL path — this is what gets stored in the DB
+  // and returned to the frontend to display the image
+  const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+  const updated = await userModel.updateProfile(req.user.id, { avatar_url: avatarUrl });
+  res.json({ message: "Avatar updated", avatarUrl, user: updated });
+};

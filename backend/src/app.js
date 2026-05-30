@@ -4,7 +4,7 @@ const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 
 const path = require("path");
-app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+
 const { NotFoundError } = require("./errors/errors");
 const corsOptions = require("./config/corsOptions");
 const v1Router = require("./routes/index");
@@ -18,6 +18,8 @@ app.use(express.json());
 app.use(morgan("dev"));
 app.use(cookieParser());
 
+
+app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 //Test route
 app.get("/", (req, res)=>{res.json({ message: "Movie API running"});
 });
