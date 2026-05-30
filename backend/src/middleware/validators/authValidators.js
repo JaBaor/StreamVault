@@ -30,8 +30,8 @@ exports.registerRules = [
 
   body("role")
     .optional()                                
-    .isIn(["member", "admin"])
-    .withMessage("Role must be either 'member' or 'admin'"),
+    .isIn(["GUEST", "SUBSCRIBER", "MODERATOR", "ADMIN", "guest", "subscriber", "moderator", "admin", "member"])
+    .withMessage("Role must be a valid StreamVault role"),
 ];
 
 // ── Login rules 

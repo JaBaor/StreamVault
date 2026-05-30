@@ -1,64 +1,69 @@
-// services/accessControlService.js
-
 const subscriptionService = require("./subscriptionService");
 
-// ── canWatch — the single source of truth for video access 
+function normalizeVideoUrl(movie) {
+  const rawUrl = movie.video_url || "";
+  const storageKey = movie.storage_key || "";
+
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+
+  const abyssStorageMatch = storageKey.match(/^abyss:(.+)$/i);
+  if (abyssStorageMatch) return `https://abyssplayer.com/${abyssStorageMatch[1]}`;
+
+  const abyssUrlMatch = rawUrl.match(/^abyss:(.+)$/i);
+  if (abyssUrlMatch) return `https://abyssplayer.com/${abyssUrlMatch[1]}`;
+
+  return rawUrl;
+}
 
 async function canWatch(userId, movie) {
-  // ── Guest (not logged in) ────────────────────────────────────────────────
+  const videoUrl = normalizeVideoUrl(movie);
+
   if (!userId) {
     if (movie.access_level === "premium") {
       return {
-        allowed:        false,
-        code:           "LOGIN_REQUIRED",
-        message:        "Please log in to watch this content",
+        allowed: false,
+        code: "LOGIN_REQUIRED",
+        message: "Please log in to watch this content",
         previewSeconds: 300,
       };
     }
-    // Free movie, no login needed — but we still don't send video_url to guests
-    // (they stream via the public trailer URL instead)
+
     return {
-      allowed:   true,
-      videoUrl:  movie.video_url,
+      allowed: true,
+      videoUrl,
       guestMode: true,
     };
   }
 
-  // ── Logged-in user 
   const subscription = await subscriptionService.getStatus(userId);
+  const requiresAgeConfirmation = Number.parseInt(movie.age_rating, 10) >= 17;
 
-  // Age rating check — extend this when you add user date_of_birth
-  const requiresAgeConfirmation = movie.age_rating >= 17;
-
-  // Premium movie
   if (movie.access_level === "premium") {
     if (!subscription.isPremium) {
       return {
         allowed: false,
-        code:    "PREMIUM_REQUIRED",
+        code: "PREMIUM_REQUIRED",
         message: "This content requires a Premium subscription",
-        plans:   Object.entries(subscriptionService.PLAN_CONFIG)
+        plans: Object.entries(subscriptionService.PLAN_CONFIG)
           .filter(([key]) => key !== "free")
           .map(([key, val]) => ({ plan: key, label: val.label })),
       };
     }
 
-    // Premium user in grace period — allow but warn
     if (subscription.isInGracePeriod) {
       return {
-        allowed:              true,
-        videoUrl:             movie.video_url,
+        allowed: true,
+        videoUrl,
         subscription,
-        warning:              `Your subscription expired. You have ${subscription.graceDaysLeft} day(s) of grace period remaining.`,
+        warning: `Your subscription expired. You have ${subscription.graceDaysLeft} day(s) of grace period remaining.`,
         requiresAgeConfirmation,
       };
     }
   }
 
-  // Free movie OR premium user with active subscription
   return {
-    allowed:  true,
-    videoUrl: movie.video_url,
+    allowed: true,
+    videoUrl,
     subscription,
     requiresAgeConfirmation,
   };

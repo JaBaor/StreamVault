@@ -50,7 +50,7 @@ exports.login = async (req, res, next)=>{
     // 3. generate ACCESS token - short-lived JWT token and attach user's id and role to the token payload
     //The server never stored this. It signs it and trusts the signature later.
     const accessToken = jwt.sign(
-      { id: user.user_id, role: user.role},
+      { id: user.id, role: user.role},
       process.env.JWT_SECRET,
       { expiresIn: "15m"}
     );
@@ -59,7 +59,7 @@ exports.login = async (req, res, next)=>{
     const refreshToken = generateRefreshToken();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    await userModel.saveRefreshToken(user.user_id, refreshToken, expiresAt);
+    await userModel.saveRefreshToken(user.id, refreshToken, expiresAt);
 
     // 5. Send REFRESH token as httpOnly so J cant read
     //    Send ACCESS token in JSON body so client can use it in headers
@@ -71,8 +71,9 @@ exports.login = async (req, res, next)=>{
     });
     res.json({message:"Login successful", accessToken,
       user: {
-        id: user.user_id,
+        id: user.id,
         username: user.username,
+        email: user.email,
         role: user.role,
       },
     });
@@ -98,12 +99,12 @@ exports.refresh = async (req, res, next)=>{
 
     // 3. Check it hasn't expired
     if (new Date() > new Date(user.refresh_token_expires)) {
-      await userModel.clearRefreshToken(user.user_id);  //clean up expired token
+      await userModel.clearRefreshToken(user.id);  //clean up expired token
       return res.status(403).json({message: "Rerfresh token expired, please log in again"});
     }
     // 4. Issue a brand-new access token
     const accessToken = jwt.sign(
-      { id: user.user_id, role: user.role},
+      { id: user.id, role: user.role},
       process.env.JWT_SECRET,
       {expiresIn: "15m"}
     );
@@ -125,7 +126,7 @@ exports.logout = async (req, res, next)=>{
       // 2. Find user and deletes token from DB
       const user = await userModel.getUserByRefreshToken(token)
       if(user) {
-        await userModel.clearRefreshToken(user.user_id);
+        await userModel.clearRefreshToken(user.id);
       }
     }
 

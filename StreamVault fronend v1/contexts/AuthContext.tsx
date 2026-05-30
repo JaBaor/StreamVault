@@ -38,8 +38,9 @@ type BackendUser = {
 };
 
 function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
+  const backendRole = String(user.role ?? "").toLowerCase();
   const role: UserRole =
-    user.role === "admin" ? "admin" : user.role === "subscriber" ? "subscriber" : "member";
+    backendRole === "admin" ? "admin" : backendRole === "subscriber" ? "subscriber" : "member";
   return {
     id: String(user.id),
     email: user.email ?? fallbackEmail,
@@ -88,10 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: displayName,
             email,
             password,
-            role: "member",
+            role: "GUEST",
           }),
         });
-        return login(displayName, password);
+        return login(email, password);
       } catch (error) {
         return {
           ok: false,

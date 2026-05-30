@@ -1,173 +1,209 @@
 const pool = require("../config/db");
 
-function buildMovieFilters({genre_id, release_year, status = "active" }){
-  const conditions = ["m.status = ?"];
-  const params = [status];
+function normalizeStatus(status = "ACTIVE") {
+  return String(status).toUpperCase();
+}
 
-  if(genre_id){
-    conditions.push("EXISTS (SELECT 1 FROM movie_genres mgf WHERE mgf.movie_id = m.movie_id AND mgf.genre_id = ?)");
+function mapMovie(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    movie_id: row.movie_id ?? row.id,
+    duration: row.duration ?? row.duration_seconds,
+    poster_url: row.poster_url ?? row.thumbnail_url,
+    access_level: row.access_level ?? (row.is_premium ? "premium" : "free"),
+  };
+}
+
+function normalizeVideoInput(value) {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  const iframeSrc = trimmed.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  if (iframeSrc) return iframeSrc[1];
+
+  const abyssMatch = trimmed.match(/^abyss:(.+)$/i);
+  if (abyssMatch) return `abyss:${abyssMatch[1]}`;
+
+  return trimmed;
+}
+
+function buildMovieFilters({ genre_id, release_year, status = "ACTIVE" }) {
+  const conditions = ["v.status = ?"];
+  const params = [normalizeStatus(status)];
+
+  if (genre_id) {
+    conditions.push("EXISTS (SELECT 1 FROM video_genres vgf WHERE vgf.video_id = v.id AND vgf.genre_id = ?)");
     params.push(Number(genre_id));
   }
 
   if (release_year) {
-    conditions.push("m.release_year = ?");
+    conditions.push("v.release_year = ?");
     params.push(Number(release_year));
   }
 
   return { conditions, params };
 }
+
 const SORT_MAP = {
-  newest:     "m.created_at DESC",
-  oldest:     "m.created_at ASC",
-  title_asc:  "m.title ASC",
-  title_desc: "m.title DESC",
-  year_desc:  "m.release_year DESC",
-  year_asc:   "m.release_year ASC",
+  newest: "v.created_at DESC",
+  oldest: "v.created_at ASC",
+  title_asc: "v.title ASC",
+  title_desc: "v.title DESC",
+  year_desc: "v.release_year DESC",
+  year_asc: "v.release_year ASC",
 };
 
 function getSortClause(sort) {
-  return SORT_MAP[sort] || SORT_MAP.newest; // default to newest
+  return SORT_MAP[sort] || SORT_MAP.newest;
 }
 
-// GET all, pagiated + filtered + sorted
+const selectMovieFields = `
+  v.id,
+  v.id AS movie_id,
+  v.title,
+  v.description,
+  v.release_year,
+  v.duration_seconds,
+  v.duration_seconds AS duration,
+  v.thumbnail_url,
+  v.thumbnail_url AS poster_url,
+  v.video_url,
+  v.storage_key,
+  v.slug,
+  v.type,
+  v.status,
+  v.view_count,
+  v.age_rating,
+  v.is_premium,
+  CASE WHEN v.is_premium THEN 'premium' ELSE 'free' END AS access_level,
+  v.created_at,
+  MIN(vg.genre_id) AS genre_id,
+  GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
+`;
 
 async function getAllMovies({ page = 1, limit = 10, genre_id, release_year, sort }) {
-  const offset = (Number(page) - 1) * Number(limit); // page 1 → offset 0, page 2 → offset 10
+  const safeLimit = Math.min(Number(limit) || 10, 100);
+  const offset = ((Number(page) || 1) - 1) * safeLimit;
   const { conditions, params } = buildMovieFilters({ genre_id, release_year });
   const whereClause = conditions.join(" AND ");
-  const orderClause = getSortClause(sort);
 
-  // Two queries run together: one for the data page, one for the total count.
-  // The total is needed to calculate totalPages on the frontend.
-  const dataQuery = `
-    SELECT m.movie_id, m.title, m.description, m.release_year,
-           m.duration, m.poster_url, m.trailer_url, m.video_url,
-           m.access_level, m.view_count, m.created_at,
-           MIN(mg.genre_id) AS genre_id,
-           GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-    FROM   Movies m
-    LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-    LEFT JOIN Genres g       ON mg.genre_id = g.genre_id
-    WHERE  ${whereClause}
-    GROUP BY m.movie_id
-    ORDER BY ${orderClause}
-    LIMIT  ? OFFSET ?
-  `;
-
-  const countQuery = `
-    SELECT COUNT(*) AS total
-    FROM   Movies m
-    WHERE  ${whereClause}
-  `;
-
-  // Run both queries in parallel 
-  const [[movies], [[{ total }]]] = await Promise.all([
-    pool.query(dataQuery,  [...params, Number(limit), offset]),
-    pool.query(countQuery, params),
+  const [[rows], [[{ total }]]] = await Promise.all([
+    pool.query(
+      `SELECT ${selectMovieFields}
+       FROM videos v
+       LEFT JOIN video_genres vg ON v.id = vg.video_id
+       LEFT JOIN genres g ON vg.genre_id = g.id
+       WHERE ${whereClause}
+       GROUP BY v.id
+       ORDER BY ${getSortClause(sort)}
+       LIMIT ? OFFSET ?`,
+      [...params, safeLimit, offset]
+    ),
+    pool.query(`SELECT COUNT(*) AS total FROM videos v WHERE ${whereClause}`, params),
   ]);
 
   return {
-    data: movies,
+    data: rows.map(mapMovie),
     pagination: {
-      total:      Number(total),
-      page:       Number(page),
-      limit:      Number(limit),
-      totalPages: Math.ceil(Number(total) / Number(limit)),
+      total: Number(total),
+      page: Number(page) || 1,
+      limit: safeLimit,
+      totalPages: Math.ceil(Number(total) / safeLimit),
     },
   };
 }
 
-//GET by id 
 async function getMovieById(movieId) {
   const [rows] = await pool.query(
-    `SELECT m.*, MIN(mg.genre_id) AS genre_id,
-            GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-     FROM   Movies m
-     LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-     LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
-     WHERE  m.movie_id = ? AND m.status = 'active'
-     GROUP BY m.movie_id`,
+    `SELECT ${selectMovieFields}
+     FROM videos v
+     LEFT JOIN video_genres vg ON v.id = vg.video_id
+     LEFT JOIN genres g ON vg.genre_id = g.id
+     WHERE v.id = ? AND v.status = 'ACTIVE'
+     GROUP BY v.id`,
     [movieId]
   );
-  return rows[0]; // undefined if not found
+  return mapMovie(rows[0]);
 }
 
-// SEARCH — multi-field
-// Using parameterized query
 async function searchMovies({ q, page = 1, limit = 10 }) {
-  const offset     = (Number(page) - 1) * Number(limit);
-  const searchTerm = `%${q}%`;   // wrap in % for "contains" search
+  const safeLimit = Math.min(Number(limit) || 10, 100);
+  const offset = ((Number(page) || 1) - 1) * safeLimit;
+  const searchTerm = `%${q}%`;
 
-  const dataQuery = `
-   SELECT m.movie_id, m.title, m.description, m.release_year,
-       m.duration, m.poster_url, m.access_level, m.view_count,
-       MIN(mg.genre_id) AS genre_id,
-       GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-    FROM   Movies m
-    LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-    LEFT JOIN Genres g       ON mg.genre_id = g.genre_id
-    WHERE  m.status = 'active'
-      AND  (m.title LIKE ? OR m.description LIKE ?)
-    GROUP BY m.movie_id
-    ORDER BY m.view_count DESC
-    LIMIT  ? OFFSET ?
-  `;
-
-  const countQuery = `
-    SELECT COUNT(*) AS total
-    FROM   Movies m
-    WHERE  m.status = 'active'
-      AND  (m.title LIKE ? OR m.description LIKE ?)
-  `;
-
-  const [[movies], [[{ total }]]] = await Promise.all([
-    pool.query(dataQuery,  [searchTerm, searchTerm, Number(limit), offset]),
-    pool.query(countQuery, [searchTerm, searchTerm]),
+  const [[rows], [[{ total }]]] = await Promise.all([
+    pool.query(
+      `SELECT ${selectMovieFields}
+       FROM videos v
+       LEFT JOIN video_genres vg ON v.id = vg.video_id
+       LEFT JOIN genres g ON vg.genre_id = g.id
+       WHERE v.status = 'ACTIVE' AND (v.title LIKE ? OR v.description LIKE ?)
+       GROUP BY v.id
+       ORDER BY v.view_count DESC
+       LIMIT ? OFFSET ?`,
+      [searchTerm, searchTerm, safeLimit, offset]
+    ),
+    pool.query(
+      "SELECT COUNT(*) AS total FROM videos v WHERE v.status = 'ACTIVE' AND (v.title LIKE ? OR v.description LIKE ?)",
+      [searchTerm, searchTerm]
+    ),
   ]);
 
   return {
-    data: movies,
+    data: rows.map(mapMovie),
     pagination: {
-      total:      Number(total),
-      page:       Number(page),
-      limit:      Number(limit),
-      totalPages: Math.ceil(Number(total) / Number(limit)),
+      total: Number(total),
+      page: Number(page) || 1,
+      limit: safeLimit,
+      totalPages: Math.ceil(Number(total) / safeLimit),
     },
   };
 }
 
-// CREATE
-async function createMovie({
-  title,
-  description,
-  release_year,
-  duration,
-  poster_url,
-  trailer_url,
-  video_url,
-  access_level,
-  genre_id,
-}) {
+async function createMovie(fields) {
+  const {
+    title,
+    description,
+    release_year,
+    duration,
+    duration_seconds,
+    poster_url,
+    thumbnail_url,
+    video_url,
+    access_level,
+    is_premium,
+    genre_id,
+    type = "MOVIE",
+  } = fields;
+
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
     const [result] = await connection.query(
-      `INSERT INTO Movies (title, description, release_year, duration, poster_url, trailer_url, video_url, access_level)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, description || null, release_year || null, duration || null,
-       poster_url || null, trailer_url || null, video_url || null,
-       access_level || "free"]
+      `INSERT INTO videos
+       (title, description, release_year, duration_seconds, thumbnail_url, video_url, type, is_premium, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+      [
+        title,
+        description || null,
+        release_year || null,
+        duration_seconds || duration || null,
+        thumbnail_url || poster_url || null,
+        normalizeVideoInput(video_url),
+        String(type).toUpperCase(),
+        is_premium !== undefined ? Boolean(is_premium) : access_level === "premium",
+      ]
     );
 
     if (genre_id) {
       await connection.query(
-        "INSERT IGNORE INTO movie_genres (movie_id, genre_id) VALUES (?, ?)",
+        "INSERT IGNORE INTO video_genres (video_id, genre_id) VALUES (?, ?)",
         [result.insertId, Number(genre_id)]
       );
     }
 
     await connection.commit();
-    return getMovieById(result.insertId); // return the full created movie
+    return getMovieById(result.insertId);
   } catch (error) {
     await connection.rollback();
     throw error;
@@ -176,39 +212,57 @@ async function createMovie({
   }
 }
 
-// UPDATE 
 async function updateMovie(movieId, fields) {
-  const allowed = ["title", "description", "release_year", "duration",
-                   "poster_url", "trailer_url", "video_url", "access_level"];
+  const aliases = {
+    duration: "duration_seconds",
+    poster_url: "thumbnail_url",
+  };
+  const allowed = [
+    "title",
+    "description",
+    "release_year",
+    "duration_seconds",
+    "thumbnail_url",
+    "video_url",
+    "type",
+    "age_rating",
+    "is_premium",
+  ];
 
-  const setClauses = [];
-  const params     = [];
-
-  for (const key of allowed) {
-    if (fields[key] !== undefined) {
-      setClauses.push(`${key} = ?`);
-      params.push(fields[key]);
-    }
+  const normalized = { ...fields };
+  for (const [from, to] of Object.entries(aliases)) {
+    if (normalized[from] !== undefined && normalized[to] === undefined) normalized[to] = normalized[from];
+  }
+  if (normalized.access_level !== undefined && normalized.is_premium === undefined) {
+    normalized.is_premium = normalized.access_level === "premium";
+  }
+  if (normalized.video_url !== undefined) {
+    normalized.video_url = normalizeVideoInput(normalized.video_url);
   }
 
-  if (setClauses.length === 0 && fields.genre_id === undefined) return null; // nothing to update
-
-  params.push(movieId);
+  const setClauses = [];
+  const params = [];
+  for (const key of allowed) {
+    if (normalized[key] !== undefined) {
+      setClauses.push(`${key} = ?`);
+      params.push(key === "type" ? String(normalized[key]).toUpperCase() : normalized[key]);
+    }
+  }
 
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
     if (setClauses.length > 0) {
       await connection.query(
-        `UPDATE Movies SET ${setClauses.join(", ")} WHERE movie_id = ? AND status = 'active'`,
-        params
+        `UPDATE videos SET ${setClauses.join(", ")} WHERE id = ? AND status = 'ACTIVE'`,
+        [...params, movieId]
       );
     }
     if (fields.genre_id !== undefined) {
-      await connection.query("DELETE FROM movie_genres WHERE movie_id = ?", [movieId]);
+      await connection.query("DELETE FROM video_genres WHERE video_id = ?", [movieId]);
       if (fields.genre_id) {
         await connection.query(
-          "INSERT IGNORE INTO movie_genres (movie_id, genre_id) VALUES (?, ?)",
+          "INSERT IGNORE INTO video_genres (video_id, genre_id) VALUES (?, ?)",
           [movieId, Number(fields.genre_id)]
         );
       }
@@ -224,25 +278,18 @@ async function updateMovie(movieId, fields) {
   return getMovieById(movieId);
 }
 
-// ── SOFT DELETE 
-// Sets status = 'inactive'. The row stays in the DB.
-// All GET queries filter WHERE status = 'active' so it disappears from all lists.
 async function softDeleteMovie(movieId) {
   const [result] = await pool.query(
-    "UPDATE Movies SET status = 'inactive' WHERE movie_id = ? AND status = 'active'",
+    "UPDATE videos SET status = 'INACTIVE' WHERE id = ? AND status = 'ACTIVE'",
     [movieId]
   );
-  return result.affectedRows > 0; // false if movie didn't exist or already deleted
+  return result.affectedRows > 0;
 }
 
-// INCREMENT VIEW COUNT 
-// Called when a user plays a movie.
 async function incrementViewCount(movieId) {
-  await pool.query(
-    "UPDATE Movies SET view_count = view_count + 1 WHERE movie_id = ?",
-    [movieId]
-  );
+  await pool.query("UPDATE videos SET view_count = view_count + 1 WHERE id = ?", [movieId]);
 }
+
 module.exports = {
   getAllMovies,
   getMovieById,
@@ -251,4 +298,5 @@ module.exports = {
   updateMovie,
   softDeleteMovie,
   incrementViewCount,
+  mapMovie,
 };

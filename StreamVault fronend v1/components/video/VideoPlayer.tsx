@@ -10,6 +10,22 @@ interface VideoPlayerProps {
   initialProgress?: number;
 }
 
+function getEmbedUrl(url: string) {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "abyssplayer.com" || host === "abyss.to") {
+      return url;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export function VideoPlayer({
   episode,
   onProgress,
@@ -23,6 +39,7 @@ export function VideoPlayer({
   const [volume, setVolume] = useState(1);
   const [showControls, setShowControls] = useState(true);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const embedUrl = getEmbedUrl(episode.videoUrl);
 
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
@@ -86,6 +103,29 @@ export function VideoPlayer({
   };
 
   const progressPct = duration ? (currentTime / duration) * 100 : 0;
+
+  if (!episode.videoUrl) {
+    return (
+      <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-black px-6 text-center text-sm text-zinc-400">
+        This title does not have a playable video URL yet.
+      </div>
+    );
+  }
+
+  if (embedUrl) {
+    return (
+      <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+        <iframe
+          src={embedUrl}
+          title={episode.title}
+          className="h-full w-full border-0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          scrolling="no"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

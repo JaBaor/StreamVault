@@ -1,86 +1,65 @@
 const pool = require("../config/db");
 
-// Get or create the user's default watchlist
-async function getOrCreateDefault(userId) {
-  const [rows] = await pool.query(
-    "SELECT * FROM Watchlists WHERE user_id = ? LIMIT 1",
-    [userId]
-  );
-  if (rows.length > 0) return rows[0];
-
-  const [result] = await pool.query(
-    "INSERT INTO Watchlists (user_id, name) VALUES (?, 'My Watchlist')",
-    [userId]
-  );
-  return { watchlist_id: result.insertId, user_id: userId, name: "My Watchlist" };
-}
-
-//ADD movie to watchlist 
 async function addMovie(userId, movieId) {
-  const wl = await getOrCreateDefault(userId);
   await pool.query(
-    "INSERT IGNORE INTO Watchlist_Movies (watchlist_id, movie_id) VALUES (?, ?)",
-    [wl.watchlist_id, movieId]
+    "INSERT IGNORE INTO watchlist (user_id, video_id) VALUES (?, ?)",
+    [userId, movieId]
   );
 }
 
-//REMOVE movie from watchlist 
 async function removeMovie(userId, movieId) {
-  const wl = await getOrCreateDefault(userId);
   const [result] = await pool.query(
-    "DELETE FROM Watchlist_Movies WHERE watchlist_id = ? AND movie_id = ?",
-    [wl.watchlist_id, movieId]
+    "DELETE FROM watchlist WHERE user_id = ? AND video_id = ?",
+    [userId, movieId]
   );
   return result.affectedRows > 0;
 }
 
-//GET watchlist — paginated 
-// Three-table JOIN: Watchlist_Movies → Movies → Genres
 async function getWatchlist(userId, { page = 1, limit = 10 }) {
-  const offset = (Number(page) - 1) * Number(limit);
-  const wl     = await getOrCreateDefault(userId);
+  const safeLimit = Math.min(Number(limit) || 10, 100);
+  const offset = ((Number(page) || 1) - 1) * safeLimit;
 
   const [[movies], [[{ total }]]] = await Promise.all([
     pool.query(
-      `SELECT m.movie_id, m.title, m.release_year, m.duration,
-              m.poster_url, m.view_count,
-              MIN(mg.genre_id) AS genre_id,
+      `SELECT v.id, v.id AS movie_id, v.title, v.release_year,
+              v.duration_seconds AS duration, v.thumbnail_url AS poster_url,
+              v.view_count, wl.added_at,
+              MIN(vg.genre_id) AS genre_id,
               GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-       FROM   Watchlist_Movies wm
-       JOIN   Movies m  ON wm.movie_id  = m.movie_id AND m.status = 'active'
-       LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-       LEFT JOIN Genres g ON mg.genre_id = g.genre_id
-       WHERE  wm.watchlist_id = ?
-       GROUP BY m.movie_id
-       LIMIT  ? OFFSET ?`,
-      [wl.watchlist_id, Number(limit), offset]
+       FROM watchlist wl
+       JOIN videos v ON wl.video_id = v.id AND v.status = 'ACTIVE'
+       LEFT JOIN video_genres vg ON v.id = vg.video_id
+       LEFT JOIN genres g ON vg.genre_id = g.id
+       WHERE wl.user_id = ?
+       GROUP BY v.id, wl.added_at
+       ORDER BY wl.added_at DESC
+       LIMIT ? OFFSET ?`,
+      [userId, safeLimit, offset]
     ),
     pool.query(
       `SELECT COUNT(*) AS total
-       FROM   Watchlist_Movies wm
-       JOIN   Movies m ON wm.movie_id = m.movie_id AND m.status = 'active'
-       WHERE  wm.watchlist_id = ?`,
-      [wl.watchlist_id]
+       FROM watchlist wl
+       JOIN videos v ON wl.video_id = v.id AND v.status = 'ACTIVE'
+       WHERE wl.user_id = ?`,
+      [userId]
     ),
   ]);
 
   return {
     data: movies,
     pagination: {
-      total:      Number(total),
-      page:       Number(page),
-      limit:      Number(limit),
-      totalPages: Math.ceil(Number(total) / Number(limit)),
+      total: Number(total),
+      page: Number(page) || 1,
+      limit: safeLimit,
+      totalPages: Math.ceil(Number(total) / safeLimit),
     },
   };
 }
 
-//CHECK if movie is in watchlist 
 async function isInWatchlist(userId, movieId) {
-  const wl          = await getOrCreateDefault(userId);
   const [[{ count }]] = await pool.query(
-    "SELECT COUNT(*) AS count FROM Watchlist_Movies WHERE watchlist_id = ? AND movie_id = ?",
-    [wl.watchlist_id, movieId]
+    "SELECT COUNT(*) AS count FROM watchlist WHERE user_id = ? AND video_id = ?",
+    [userId, movieId]
   );
   return Number(count) > 0;
 }

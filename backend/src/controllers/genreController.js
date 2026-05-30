@@ -17,13 +17,13 @@ exports.getGenreById = async (req, res) => {
 //POST /api/v1/genres — admin only 
 exports.createGenre = async (req, res) => {
   // ER_DUP_ENTRY from MySQL is caught by errorHandler automatically
-  const genre = await genreModel.createGenre(req.body.name);
+  const genre = await genreModel.createGenre(req.body.name, req.body.description);
   await logAudit({
     userId:     req.user.id,
     action:     "CREATE",
-    entityType: "Movie",
-    entityId:   movie.movie_id,
-    details:    { title: movie.title },
+    entityType: "Genre",
+    entityId:   genre.id,
+    details:    { name: genre.name },
   });
   res.status(201).json(genre);
 };
@@ -33,13 +33,13 @@ exports.updateGenre = async (req, res) => {
   const existing = await genreModel.getGenreById(req.params.id);
   if (!existing) throw new NotFoundError("Genre");
 
-  const updated = await genreModel.updateGenre(req.params.id, req.body.name);
+  const updated = await genreModel.updateGenre(req.params.id, req.body.name, req.body.description);
   await logAudit({
     userId:     req.user.id,
-    action:     "CREATE",
-    entityType: "Movie",
-    entityId:   movie.movie_id,
-    details:    { title: movie.title },
+    action:     "UPDATE",
+    entityType: "Genre",
+    entityId:   updated.id,
+    details:    { name: updated.name },
   });
   res.json(updated);
 };
@@ -60,10 +60,10 @@ exports.deleteGenre = async (req, res) => {
   await genreModel.deleteGenre(req.params.id);
   await logAudit({
     userId:     req.user.id,
-    action:     "CREATE",
-    entityType: "Movie",
-    entityId:   movie.movie_id,
-    details:    { title: movie.title },
+    action:     "DELETE",
+    entityType: "Genre",
+    entityId:   existing.id,
+    details:    { name: existing.name },
   });
   res.json({ message: "Genre deleted successfully" });
 };

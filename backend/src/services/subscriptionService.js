@@ -3,9 +3,9 @@ const pool = require("../config/db");
 
 // ── Plan config — durations and labels 
 const PLAN_CONFIG = {
-  free:            { durationDays: null, label: "Free"            },
-  premium_monthly: { durationDays: 30,   label: "Premium Monthly" },
-  premium_yearly:  { durationDays: 365,  label: "Premium Yearly"  },
+  free: { durationDays: null, label: "Free" },
+  premium_monthly: { durationDays: 30, label: "Premium Monthly" },
+  premium_yearly: { durationDays: 365, label: "Premium Yearly" },
 };
 
 const GRACE_PERIOD_DAYS = 3;
@@ -90,21 +90,20 @@ async function getStatus(userId) {
 
 async function subscribe(userId, plan) {
   if (plan === "free") {
-    // Subscribing to free = cancelling
     await subscriptionModel.cancel(userId);
-    await pool.query("UPDATE Users SET role = 'member' WHERE user_id = ? AND role = 'subscriber'", [userId]);
+    await pool.query("UPDATE users SET role = 'GUEST' WHERE id = ? AND role = 'SUBSCRIBER'", [userId]);
     return getStatus(userId);
   }
 
   const expiresAt = calcExpiresAt(plan);
   await subscriptionModel.upsert(userId, plan, expiresAt);
-  await pool.query("UPDATE Users SET role = 'subscriber' WHERE user_id = ? AND role = 'member'", [userId]);
+  await pool.query("UPDATE users SET role = 'SUBSCRIBER' WHERE id = ? AND role = 'GUEST'", [userId]);
   return getStatus(userId);
 }
 
 async function cancel(userId) {
   await subscriptionModel.cancel(userId);
-  await pool.query("UPDATE Users SET role = 'member' WHERE user_id = ? AND role = 'subscriber'", [userId]);
+  await pool.query("UPDATE users SET role = 'GUEST' WHERE id = ? AND role = 'SUBSCRIBER'", [userId]);
   return getStatus(userId);
 }
 

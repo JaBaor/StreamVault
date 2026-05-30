@@ -17,6 +17,7 @@ type BackendMovie = {
   banner_url?: string | null;
   trailer_url?: string | null;
   video_url?: string | null;
+  storage_key?: string | null;
   view_count?: number | string | null;
   genre_id?: number | string | null;
   genre_name?: string | null;
@@ -39,9 +40,22 @@ function slugify(value: string) {
 
 function absoluteAsset(url?: string | null) {
   if (!url) return "/window.svg";
+  const abyss = normalizeAbyssUrl(url);
+  if (abyss) return abyss;
   if (/^https?:\/\//i.test(url) || url.startsWith("/")) return url;
   const base = API_URL.replace(/\/api\/v1$/, "");
   return `${base}/${url.replace(/^\/+/, "")}`;
+}
+
+function normalizeAbyssUrl(value?: string | null) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^abyss:(.+)$/i);
+  if (match) return `https://abyssplayer.com/${match[1]}`;
+  if (/^(https?:\/\/)?(www\.)?(abyssplayer\.com|abyss\.to)\//i.test(trimmed)) {
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }
+  return null;
 }
 
 function normalizeBackendGenre(row: BackendGenre): Genre {
@@ -91,7 +105,10 @@ function movieToEpisode(movie: BackendMovie | Anime): Episode {
   const title = isAnime ? movie.title : movie.title;
   const duration = isAnime ? "Full movie" : String(movie.duration || "Full movie");
   const thumbnail = isAnime ? movie.posterUrl : absoluteAsset(movie.poster_url);
-  const video = !isAnime && movie.video_url ? absoluteAsset(movie.video_url) : "";
+  const video =
+    !isAnime && (movie.video_url || movie.storage_key)
+      ? absoluteAsset(movie.video_url || movie.storage_key)
+      : "";
   return {
     id: "full",
     animeId: id,
@@ -281,6 +298,16 @@ export type AdminUser = {
   created_at?: string;
 };
 
+function normalizeAdminUser(row: AdminUser & { role?: string; status?: string }): AdminUser {
+  const role = String(row.role ?? "").toLowerCase();
+  const status = String(row.status ?? "").toLowerCase();
+  return {
+    ...row,
+    role: role === "admin" ? "admin" : role === "subscriber" ? "subscriber" : "member",
+    status: status === "active" ? "active" : "deactivated",
+  };
+}
+
 export type AdminStats = {
   totalUsers: number;
   totalMovies: number;
@@ -290,7 +317,7 @@ export type AdminStats = {
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
   const result = await apiFetch("/admin/users?limit=100");
-  return result.data ?? [];
+  return (result.data ?? []).map(normalizeAdminUser);
 }
 
 export async function updateAdminUserRole(id: string, role: AdminUser["role"]) {

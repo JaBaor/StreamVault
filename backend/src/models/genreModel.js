@@ -1,69 +1,65 @@
-
 const pool = require("../config/db");
 
-//GET all — with movie count per genre 
+function slugify(value) {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function mapGenre(row) {
+  if (!row) return row;
+  return { ...row, genre_id: row.genre_id ?? row.id };
+}
+
 async function getAllGenres() {
   const [rows] = await pool.query(`
-   SELECT   g.genre_id, g.name,
-         COUNT(m.movie_id) AS movie_count
-    FROM     Genres g
-    LEFT JOIN movie_genres mg ON g.genre_id = mg.genre_id
-    LEFT JOIN Movies m        ON mg.movie_id = m.movie_id AND m.status = 'active'
-    GROUP BY g.genre_id, g.name
-    ORDER BY g.name ASC;
+    SELECT g.id, g.id AS genre_id, g.name, g.slug, g.description,
+           COUNT(v.id) AS movie_count
+    FROM genres g
+    LEFT JOIN video_genres vg ON g.id = vg.genre_id
+    LEFT JOIN videos v ON vg.video_id = v.id AND v.status = 'ACTIVE'
+    GROUP BY g.id
+    ORDER BY g.name ASC
   `);
-  return rows;
+  return rows.map(mapGenre);
 }
 
-// GET by id 
 async function getGenreById(genreId) {
-  const [rows] = await pool.query(
-    "SELECT * FROM Genres WHERE genre_id = ?",
-    [genreId]
-  );
-  return rows[0];
+  const [rows] = await pool.query("SELECT id, id AS genre_id, name, slug, description FROM genres WHERE id = ?", [genreId]);
+  return mapGenre(rows[0]);
 }
 
-//CREATE 
-async function createGenre(name) {
+async function createGenre(name, description = null) {
   const [result] = await pool.query(
-    "INSERT INTO Genres (name) VALUES (?)",
-    [name]
+    "INSERT INTO genres (name, slug, description) VALUES (?, ?, ?)",
+    [name, slugify(name), description]
   );
   return getGenreById(result.insertId);
 }
 
-//UPDATE 
-async function updateGenre(genreId, name) {
+async function updateGenre(genreId, name, description) {
   await pool.query(
-    "UPDATE Genres SET name = ? WHERE genre_id = ?",
-    [name, genreId]
+    "UPDATE genres SET name = ?, slug = ?, description = COALESCE(?, description) WHERE id = ?",
+    [name, slugify(name), description ?? null, genreId]
   );
   return getGenreById(genreId);
 }
 
-//CHECK if any active movies reference this genre 
 async function getMovieCountByGenre(genreId) {
   const [[{ count }]] = await pool.query(
-    `SELECT COUNT(*) AS count 
-      FROM   Movies m
-      INNER JOIN movie_genres mg ON m.movie_id = mg.movie_id
-      WHERE  mg.genre_id = ? 
-        AND  m.status = 'active';`,
+    `SELECT COUNT(*) AS count
+     FROM videos v
+     INNER JOIN video_genres vg ON v.id = vg.video_id
+     WHERE vg.genre_id = ? AND v.status = 'ACTIVE'`,
     [genreId]
   );
   return Number(count);
 }
 
-//DELETE 
-// Hard delete — genres are reference data, not user content.
-// The controller checks getMovieCountByGenre first.
 async function deleteGenre(genreId) {
-  const [result] = await pool.query(
-    `DELETE FROM movie_genres WHERE genre_id = ?;
-    DELETE FROM Genres WHERE genre_id = ?;`,
-    [genreId]
-  );
+  const [result] = await pool.query("DELETE FROM genres WHERE id = ?", [genreId]);
   return result.affectedRows > 0;
 }
 

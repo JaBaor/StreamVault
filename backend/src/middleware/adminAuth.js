@@ -1,7 +1,7 @@
 const { ForbiddenError } = require("../errors/errors");
 
 function authorizeAdmin(req,res,next){
-if(req.user.role !== "admin"){
+if(String(req.user.role).toUpperCase() !== "ADMIN"){
   return next(new ForbiddenError("Admin access required"))
 }
 

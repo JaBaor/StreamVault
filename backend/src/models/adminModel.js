@@ -1,111 +1,98 @@
-//SQL for user mamagement and dashboard stats
 const pool = require("../config/db");
+const { toDbRole } = require("./userModel");
 
-// ── GET all users — paginated + searchable 
+function toDbStatus(status) {
+  const value = String(status).toLowerCase();
+  if (value === "deactivated" || value === "inactive") return "INACTIVE";
+  if (value === "banned") return "BANNED";
+  return "ACTIVE";
+}
+
 async function getUsers({ page = 1, limit = 20, search }) {
-  const offset     = (Number(page) - 1) * Number(limit);
+  const safeLimit = Math.min(Number(limit) || 20, 100);
+  const offset = ((Number(page) || 1) - 1) * safeLimit;
   const conditions = [];
-  const params     = [];
+  const params = [];
 
   if (search && search.trim()) {
-    // Search across username AND email — user may search either
-    conditions.push("(u.username LIKE ? OR u.email LIKE ?)");
+    conditions.push("(u.display_name LIKE ? OR u.email LIKE ?)");
     params.push(`%${search.trim()}%`, `%${search.trim()}%`);
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-
   const [[users], [[{ total }]]] = await Promise.all([
     pool.query(
-      `SELECT user_id, username, email, role, status, avatar_url, created_at
-       FROM   Users u
+      `SELECT id, id AS user_id, display_name, display_name AS username,
+              email, role, status, avatar_url, created_at
+       FROM users u
        ${whereClause}
        ORDER BY u.created_at DESC
-       LIMIT  ? OFFSET ?`,
-      [...params, Number(limit), offset]
+       LIMIT ? OFFSET ?`,
+      [...params, safeLimit, offset]
     ),
-    pool.query(
-      `SELECT COUNT(*) AS total FROM Users u ${whereClause}`,
-      params
-    ),
+    pool.query(`SELECT COUNT(*) AS total FROM users u ${whereClause}`, params),
   ]);
 
   return {
     data: users,
     pagination: {
-      total:      Number(total),
-      page:       Number(page),
-      limit:      Number(limit),
-      totalPages: Math.ceil(Number(total) / Number(limit)),
+      total: Number(total),
+      page: Number(page) || 1,
+      limit: safeLimit,
+      totalPages: Math.ceil(Number(total) / safeLimit),
     },
   };
 }
 
-// ── GET single user by id 
 async function getUserById(userId) {
   const [rows] = await pool.query(
-    `SELECT user_id, username, email, role, status, avatar_url, created_at
-     FROM   Users WHERE user_id = ?`,
+    `SELECT id, id AS user_id, display_name, display_name AS username,
+            email, role, status, avatar_url, created_at
+     FROM users WHERE id = ?`,
     [userId]
   );
   return rows[0];
 }
 
-// ── UPDATE role 
 async function updateRole(userId, role) {
-  const [result] = await pool.query(
-    "UPDATE Users SET role = ? WHERE user_id = ?",
-    [role, userId]
-  );
+  const [result] = await pool.query("UPDATE users SET role = ? WHERE id = ?", [toDbRole(role), userId]);
   return result.affectedRows > 0;
 }
 
-// ── UPDATE status 
 async function updateStatus(userId, status) {
-  const [result] = await pool.query(
-    "UPDATE Users SET status = ? WHERE user_id = ?",
-    [status, userId]
-  );
+  const [result] = await pool.query("UPDATE users SET status = ? WHERE id = ?", [toDbStatus(status), userId]);
   return result.affectedRows > 0;
 }
 
-// ── GET a specific user's watch history (admin view) 
 async function getUserWatchHistory(userId, { page = 1, limit = 20 }) {
-  const offset = (Number(page) - 1) * Number(limit);
+  const safeLimit = Math.min(Number(limit) || 20, 100);
+  const offset = ((Number(page) || 1) - 1) * safeLimit;
 
   const [[history], [[{ total }]]] = await Promise.all([
     pool.query(
-      `SELECT wh.history_id, wh.progress_seconds, wh.watched_at,
-              m.movie_id, m.title, m.duration, m.poster_url
-       FROM   Watch_History wh
-       JOIN   Movies m ON wh.movie_id = m.movie_id
-       WHERE  wh.user_id = ?
-       ORDER BY wh.watched_at DESC
-       LIMIT  ? OFFSET ?`,
-      [userId, Number(limit), offset]
+      `SELECT wh.id AS history_id, wh.progress_seconds, wh.last_watched_at AS watched_at,
+              v.id AS movie_id, v.title, v.duration_seconds AS duration, v.thumbnail_url AS poster_url
+       FROM watch_history wh
+       JOIN videos v ON wh.video_id = v.id
+       WHERE wh.user_id = ?
+       ORDER BY wh.last_watched_at DESC
+       LIMIT ? OFFSET ?`,
+      [userId, safeLimit, offset]
     ),
-    pool.query(
-      "SELECT COUNT(*) AS total FROM Watch_History WHERE user_id = ?",
-      [userId]
-    ),
+    pool.query("SELECT COUNT(*) AS total FROM watch_history WHERE user_id = ?", [userId]),
   ]);
 
   return {
     data: history,
     pagination: {
-      total:      Number(total),
-      page:       Number(page),
-      limit:      Number(limit),
-      totalPages: Math.ceil(Number(total) / Number(limit)),
+      total: Number(total),
+      page: Number(page) || 1,
+      limit: safeLimit,
+      totalPages: Math.ceil(Number(total) / safeLimit),
     },
   };
 }
 
-//
-//  DASHBOARD STATS
-// 
-
-// ── Snapshot stats — all run in parallel 
 async function getStats() {
   const [
     [[{ totalUsers }]],
@@ -113,77 +100,58 @@ async function getStats() {
     [[{ totalGenres }]],
     [[{ viewsToday }]],
   ] = await Promise.all([
-    pool.query("SELECT COUNT(*) AS totalUsers FROM Users"),
-    pool.query("SELECT COUNT(*) AS totalMovies FROM Movies WHERE status = 'active'"),
-    pool.query("SELECT COUNT(*) AS totalGenres FROM Genres"),
-
-    // Views today = watch history entries created today
-    pool.query(
-      `SELECT COUNT(*) AS viewsToday
-       FROM   Watch_History
-       WHERE  DATE(watched_at) = CURDATE()`
-    ),
+    pool.query("SELECT COUNT(*) AS totalUsers FROM users"),
+    pool.query("SELECT COUNT(*) AS totalMovies FROM videos WHERE status = 'ACTIVE'"),
+    pool.query("SELECT COUNT(*) AS totalGenres FROM genres"),
+    pool.query("SELECT COUNT(*) AS viewsToday FROM watch_history WHERE DATE(last_watched_at) = CURDATE()"),
   ]);
 
   return {
-    totalUsers:  Number(totalUsers),
+    totalUsers: Number(totalUsers),
     totalMovies: Number(totalMovies),
     totalGenres: Number(totalGenres),
-    viewsToday:  Number(viewsToday),
+    viewsToday: Number(viewsToday),
   };
 }
 
-// ── Daily signup counts for a period r.
 async function getSignupStats(period = "week") {
   const days = period === "month" ? 30 : 7;
-
-  // Build a subquery that generates the last N dates as a virtual table.
-  // This ensures every day appears in results even if nobody signed up.
   const [rows] = await pool.query(
-    `SELECT dates.date, COUNT(u.user_id) AS signups
+    `SELECT dates.date, COUNT(u.id) AS signups
      FROM (
-       -- Generate a row for each of the last N days
        SELECT DATE(DATE_SUB(CURDATE(), INTERVAL seq DAY)) AS date
        FROM (
          SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
-         UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
-         UNION SELECT 7 UNION SELECT 8 UNION SELECT 9
-         UNION SELECT 10 UNION SELECT 11 UNION SELECT 12
-         UNION SELECT 13 UNION SELECT 14 UNION SELECT 15
-         UNION SELECT 16 UNION SELECT 17 UNION SELECT 18
-         UNION SELECT 19 UNION SELECT 20 UNION SELECT 21
-         UNION SELECT 22 UNION SELECT 23 UNION SELECT 24
-         UNION SELECT 25 UNION SELECT 26 UNION SELECT 27
+         UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7
+         UNION SELECT 8 UNION SELECT 9 UNION SELECT 10 UNION SELECT 11
+         UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15
+         UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19
+         UNION SELECT 20 UNION SELECT 21 UNION SELECT 22 UNION SELECT 23
+         UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27
          UNION SELECT 28 UNION SELECT 29
        ) seq_table
        WHERE seq < ?
      ) dates
-     LEFT JOIN Users u
-            ON DATE(u.created_at) = dates.date
+     LEFT JOIN users u ON DATE(u.created_at) = dates.date
      GROUP BY dates.date
      ORDER BY dates.date ASC`,
     [days]
   );
-
-  return rows.map((r) => ({
-    date:    r.date,
-    signups: Number(r.signups),
-  }));
+  return rows.map((r) => ({ date: r.date, signups: Number(r.signups) }));
 }
 
-// ── Top movies by view count 
 async function getTopMovies(limit = 10) {
   const [rows] = await pool.query(
-    `SELECT m.movie_id, m.title, m.release_year, m.view_count,
-            MIN(mg.genre_id) AS genre_id,
+    `SELECT v.id AS movie_id, v.title, v.release_year, v.view_count,
+            MIN(vg.genre_id) AS genre_id,
             GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-     FROM   Movies m
-     LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-     LEFT JOIN Genres g ON mg.genre_id = g.genre_id
-     WHERE  m.status = 'active'
-     GROUP BY m.movie_id
-     ORDER BY m.view_count DESC
-     LIMIT  ?`,
+     FROM videos v
+     LEFT JOIN video_genres vg ON v.id = vg.video_id
+     LEFT JOIN genres g ON vg.genre_id = g.id
+     WHERE v.status = 'ACTIVE'
+     GROUP BY v.id
+     ORDER BY v.view_count DESC
+     LIMIT ?`,
     [Number(limit)]
   );
   return rows;

@@ -82,15 +82,9 @@ exports.watchMovie = async (req, res) => {
   const movie = await movieModel.getMovieById(req.params.id);
   if (!movie) throw new NotFoundError("Movie");
 
-  const [fullRows] = await require("../config/db").query(
-    "SELECT video_url, access_level, age_rating FROM Movies WHERE movie_id = ?",
-    [req.params.id]
-  );
-  const fullMovie = { ...movie, ...fullRows[0] };
-
   const result = await accessControlService.canWatch(
     req.user ? req.user.id : null,
-    fullMovie
+    movie
   );
 
   if (!result.allowed) {
@@ -117,19 +111,19 @@ exports.getTrending = async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 50);
 
   const [rows] = await require("../config/db").query(
-    `SELECT m.movie_id, m.title, m.release_year, m.poster_url, m.view_count, 
-            MIN(mg.genre_id) AS genre_id,
+    `SELECT v.id AS movie_id, v.title, v.release_year, v.thumbnail_url AS poster_url, v.view_count,
+            MIN(vg.genre_id) AS genre_id,
             GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name,
-            COUNT(DISTINCT wh.history_id) AS views_last_7_days
-     FROM   Movies m
-     LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-     LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
-     LEFT JOIN Watch_History wh
-            ON wh.movie_id = m.movie_id
-           AND wh.watched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-     WHERE  m.status = 'active'
-     GROUP BY m.movie_id
-     ORDER BY views_last_7_days DESC, m.view_count DESC
+            COUNT(DISTINCT wh.id) AS views_last_7_days
+     FROM videos v
+     LEFT JOIN video_genres vg ON v.id = vg.video_id
+     LEFT JOIN genres g ON vg.genre_id = g.id
+     LEFT JOIN watch_history wh
+            ON wh.video_id = v.id
+           AND wh.last_watched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+     WHERE v.status = 'ACTIVE'
+     GROUP BY v.id
+     ORDER BY views_last_7_days DESC, v.view_count DESC
      LIMIT  ?`,
     [limit]
   );
@@ -145,11 +139,11 @@ exports.getRecommendations = async (req, res) => {
 
 
   const [[topGenre]] = await pool.query(
-    `SELECT mg.genre_id AS genre_id, COUNT(*) AS watch_count
-     FROM   Watch_History wh
-     JOIN   movie_genres mg ON wh.movie_id = mg.movie_id
-     WHERE  wh.user_id = ?
-     GROUP BY mg.genre_id
+    `SELECT vg.genre_id AS genre_id, COUNT(*) AS watch_count
+     FROM watch_history wh
+     JOIN video_genres vg ON wh.video_id = vg.video_id
+     WHERE wh.user_id = ?
+     GROUP BY vg.genre_id
      ORDER BY watch_count DESC
      LIMIT  1`,
     [userId]
@@ -160,34 +154,34 @@ exports.getRecommendations = async (req, res) => {
   if (topGenre) {
   
     [movies] = await pool.query(
-      `SELECT m.movie_id, m.title, m.release_year, m.poster_url, m.view_count, 
-              MIN(mg.genre_id) AS genre_id,
+      `SELECT v.id AS movie_id, v.title, v.release_year, v.thumbnail_url AS poster_url, v.view_count,
+              MIN(vg.genre_id) AS genre_id,
               GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-       FROM   Movies m
-       LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-       LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
-       WHERE  m.status   = 'active'
-         AND  mg.genre_id = ?
-         AND  m.movie_id NOT IN (
-           SELECT movie_id FROM Watch_History WHERE user_id = ?
+       FROM videos v
+       LEFT JOIN video_genres vg ON v.id = vg.video_id
+       LEFT JOIN genres g ON vg.genre_id = g.id
+       WHERE v.status = 'ACTIVE'
+         AND vg.genre_id = ?
+         AND v.id NOT IN (
+           SELECT video_id FROM watch_history WHERE user_id = ?
          )
-       GROUP BY m.movie_id
-       ORDER BY m.view_count DESC
+       GROUP BY v.id
+       ORDER BY v.view_count DESC
        LIMIT  ?`,
       [topGenre.genre_id, userId, limit]
     );
   } else {
   
     [movies] = await pool.query(
-      `SELECT m.movie_id, m.title, m.release_year, m.poster_url, m.view_count, 
-              MIN(mg.genre_id) AS genre_id,
+      `SELECT v.id AS movie_id, v.title, v.release_year, v.thumbnail_url AS poster_url, v.view_count,
+              MIN(vg.genre_id) AS genre_id,
               GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
-       FROM   Movies m
-       LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-       LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
-       WHERE  m.status = 'active'
-       GROUP BY m.movie_id
-       ORDER BY m.view_count DESC
+       FROM videos v
+       LEFT JOIN video_genres vg ON v.id = vg.video_id
+       LEFT JOIN genres g ON vg.genre_id = g.id
+       WHERE v.status = 'ACTIVE'
+       GROUP BY v.id
+       ORDER BY v.view_count DESC
        LIMIT  ?`,
       [limit]
     );

@@ -1,37 +1,44 @@
 const pool = require("../config/db");
 
-// ── GET subscription for a user 
-// Returns undefined if user has never subscribed (treated as free by the service)
+function toDbPlan(plan) {
+  const value = String(plan).toUpperCase();
+  if (value === "PREMIUM_MONTHLY" || value === "PREMIUM_YEARLY" || value === "FREE") return value;
+  return String(plan).toLowerCase() === "free" ? "FREE" : value;
+}
+
 async function getByUserId(userId) {
   const [rows] = await pool.query(
-    "SELECT * FROM Subscriptions WHERE user_id = ?",
+    `SELECT *, LOWER(plan) AS plan, LOWER(status) AS status, end_date AS expires_at
+     FROM subscriptions
+     WHERE user_id = ?
+     ORDER BY created_at DESC
+     LIMIT 1`,
     [userId]
   );
   return rows[0];
 }
 
-// ── CREATE or UPDATE subscription (upsert) 
-
 async function upsert(userId, plan, expiresAt) {
   await pool.query(
-    `INSERT INTO Subscriptions (user_id, plan, status, started_at, expires_at)
-     VALUES (?, ?, 'active', NOW(), ?)
-     ON DUPLICATE KEY UPDATE
-       plan       = VALUES(plan),
-       status     = 'active',
-       started_at = NOW(),
-       expires_at = VALUES(expires_at)`,
-    [userId, plan, expiresAt]
+    "UPDATE subscriptions SET status = 'CANCELLED' WHERE user_id = ? AND status = 'ACTIVE'",
+    [userId]
+  );
+  await pool.query(
+    `INSERT INTO subscriptions (user_id, plan, status, start_date, end_date)
+     VALUES (?, ?, 'ACTIVE', NOW(), ?)`,
+    [userId, toDbPlan(plan), expiresAt]
   );
   return getByUserId(userId);
 }
 
-// ── CANCEL — revert to free plan 
 async function cancel(userId) {
   await pool.query(
-    `UPDATE Subscriptions
-     SET plan = 'free', status = 'cancelled', expires_at = NULL
-     WHERE user_id = ?`,
+    "UPDATE subscriptions SET status = 'CANCELLED' WHERE user_id = ? AND status = 'ACTIVE'",
+    [userId]
+  );
+  await pool.query(
+    `INSERT INTO subscriptions (user_id, plan, status, start_date, end_date)
+     VALUES (?, 'FREE', 'ACTIVE', NOW(), NULL)`,
     [userId]
   );
 }

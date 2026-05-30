@@ -154,7 +154,6 @@ export function Header() {
 
       {menuOpen && (
         <MobileMenu
-          pathname={pathname}
           user={user}
           isAdmin={isAdmin}
           onClose={() => setMenuOpen(false)}
@@ -166,13 +165,11 @@ export function Header() {
 }
 
 function MobileMenu({
-  pathname,
   user,
   isAdmin,
   onClose,
   onLogout,
 }: {
-  pathname: string;
   user: { displayName: string } | null;
   isAdmin: boolean;
   onClose: () => void;
