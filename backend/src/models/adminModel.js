@@ -175,10 +175,13 @@ async function getSignupStats(period = "week") {
 async function getTopMovies(limit = 10) {
   const [rows] = await pool.query(
     `SELECT m.movie_id, m.title, m.release_year, m.view_count,
-            g.name AS genre_name
+            MIN(mg.genre_id) AS genre_id,
+            GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
      FROM   Movies m
-     LEFT JOIN Genres g ON m.genre_id = g.genre_id
+     LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
+     LEFT JOIN Genres g ON mg.genre_id = g.genre_id
      WHERE  m.status = 'active'
+     GROUP BY m.movie_id
      ORDER BY m.view_count DESC
      LIMIT  ?`,
     [Number(limit)]

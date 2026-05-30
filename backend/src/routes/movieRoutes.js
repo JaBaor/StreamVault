@@ -18,13 +18,13 @@ const { param }    = require("express-validator");
 router.get("/",        listMoviesRules,                validate, movieController.getAllMovies);
 router.get("/search",  searchMoviesRules,              validate, movieController.searchMovies);
 
-router.get("/:id",     movieIdParam,                   validate, movieController.getMovieById);
+router.get("/trending",        movieController.getTrending);
+router.get("/recommendations", verifyToken, movieController.getRecommendations);
 
 
 // ADMIN only — require both tokens: valid user + admin role
 router.post(  "/",     verifyToken, adminAuth, createMovieRules, validate, movieController.createMovie);
-router.get("/trending",        movieController.getTrending);
-router.get("/recommendations", verifyToken, movieController.getRecommendations);
+router.get("/:id",     movieIdParam,                   validate, movieController.getMovieById);
 router.put(   "/:id",  verifyToken, adminAuth, movieIdParam, updateMovieRules, validate, movieController.updateMovie);
 router.delete("/:id",  verifyToken, adminAuth, movieIdParam,                  validate, movieController.deleteMovie);
 router.get("/:id/watch",

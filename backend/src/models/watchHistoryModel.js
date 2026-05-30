@@ -21,11 +21,14 @@ async function getHistory(userId, { page = 1, limit = 10 }) {
     pool.query(
       `SELECT wh.history_id, wh.progress_seconds, wh.watched_at,
               m.movie_id, m.title, m.duration, m.poster_url,
-              g.name AS genre_name
+              MIN(mg.genre_id) AS genre_id,
+              GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
        FROM   Watch_History wh
        JOIN   Movies m  ON wh.movie_id  = m.movie_id
-       LEFT JOIN Genres g ON m.genre_id = g.genre_id
+       LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
+       LEFT JOIN Genres g ON mg.genre_id = g.genre_id
        WHERE  wh.user_id = ?
+       GROUP BY wh.history_id
        ORDER BY wh.watched_at DESC
        LIMIT  ? OFFSET ?`,
       [userId, Number(limit), offset]

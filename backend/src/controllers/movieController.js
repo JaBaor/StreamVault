@@ -118,11 +118,12 @@ exports.getTrending = async (req, res) => {
 
   const [rows] = await require("../config/db").query(
     `SELECT m.movie_id, m.title, m.release_year, m.poster_url, m.view_count, 
+            MIN(mg.genre_id) AS genre_id,
             GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name,
             COUNT(DISTINCT wh.history_id) AS views_last_7_days
      FROM   Movies m
      LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-     LEFT JOIN Genres g        ON mg.genreid = g.genre_id
+     LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
      LEFT JOIN Watch_History wh
             ON wh.movie_id = m.movie_id
            AND wh.watched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -144,11 +145,11 @@ exports.getRecommendations = async (req, res) => {
 
 
   const [[topGenre]] = await pool.query(
-    `SELECT mg.genreid AS genre_id, COUNT(*) AS watch_count
+    `SELECT mg.genre_id AS genre_id, COUNT(*) AS watch_count
      FROM   Watch_History wh
      JOIN   movie_genres mg ON wh.movie_id = mg.movie_id
      WHERE  wh.user_id = ?
-     GROUP BY mg.genreid
+     GROUP BY mg.genre_id
      ORDER BY watch_count DESC
      LIMIT  1`,
     [userId]
@@ -160,12 +161,13 @@ exports.getRecommendations = async (req, res) => {
   
     [movies] = await pool.query(
       `SELECT m.movie_id, m.title, m.release_year, m.poster_url, m.view_count, 
+              MIN(mg.genre_id) AS genre_id,
               GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
        FROM   Movies m
        LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-       LEFT JOIN Genres g        ON mg.genreid = g.genre_id
+       LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
        WHERE  m.status   = 'active'
-         AND  mg.genreid = ?
+         AND  mg.genre_id = ?
          AND  m.movie_id NOT IN (
            SELECT movie_id FROM Watch_History WHERE user_id = ?
          )
@@ -178,10 +180,11 @@ exports.getRecommendations = async (req, res) => {
   
     [movies] = await pool.query(
       `SELECT m.movie_id, m.title, m.release_year, m.poster_url, m.view_count, 
+              MIN(mg.genre_id) AS genre_id,
               GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
        FROM   Movies m
        LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
-       LEFT JOIN Genres g        ON mg.genreid = g.genre_id
+       LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
        WHERE  m.status = 'active'
        GROUP BY m.movie_id
        ORDER BY m.view_count DESC

@@ -58,9 +58,9 @@ export default async function AnimeDetailPage({
               <span>{eps.length} episodes</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {animeGenres.map((g) => (
+              {animeGenres.map((g, i) => (
                 <Link
-                  key={g.id}
+                  key={`${g.id}:${g.slug}:${i}`}
                   href={`/genre/${g.slug}`}
                   className="rounded-full bg-zinc-800 px-3 py-0.5 text-xs text-zinc-300 hover:bg-zinc-700"
                 >

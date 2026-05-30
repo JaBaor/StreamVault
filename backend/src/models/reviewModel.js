@@ -28,14 +28,15 @@ async function getRatingStats(movieId) {
 }
 
 //UPSERT review (text comment) 
-async function upsertReview(userId, movieId, comment) {
+async function upsertReview(userId, movieId, comment, rating) {
   await pool.query(
-    `INSERT INTO Reviews (user_id, movie_id, comment)
-     VALUES (?, ?, ?)
+    `INSERT INTO Reviews (user_id, movie_id, rating, comment)
+     VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
+       rating     = VALUES(rating),
        comment    = VALUES(comment),
        created_at = CURRENT_TIMESTAMP`,
-    [userId, movieId, comment]
+    [userId, movieId, rating, comment]
   );
 }
 

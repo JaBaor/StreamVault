@@ -1,4 +1,4 @@
-export type UserRole = "guest" | "subscriber" | "admin";
+export type UserRole = "guest" | "member" | "subscriber" | "admin";
 
 export interface User {
   id: string;
@@ -43,6 +43,21 @@ export interface Anime {
   episodeCount: number;
   isPremium: boolean;
   featured?: boolean;
+}
+
+export interface RatingStats {
+  average: number | null;
+  count: number;
+}
+
+export interface Review {
+  review_id: number | string;
+  rating?: number | null;
+  comment: string;
+  created_at: string;
+  user_id: number | string;
+  username: string;
+  avatar_url?: string | null;
 }
 
 export interface Notification {

@@ -60,7 +60,7 @@ async function getMovieCountByGenre(genreId) {
 // The controller checks getMovieCountByGenre first.
 async function deleteGenre(genreId) {
   const [result] = await pool.query(
-    `DELETE FROM movie_genres WHERE genreid = ?;
+    `DELETE FROM movie_genres WHERE genre_id = ?;
     DELETE FROM Genres WHERE genre_id = ?;`,
     [genreId]
   );

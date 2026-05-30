@@ -5,7 +5,7 @@ function buildMovieFilters({genre_id, release_year, status = "active" }){
   const params = [status];
 
   if(genre_id){
-    conditions.push("m.genre_id = ?");
+    conditions.push("EXISTS (SELECT 1 FROM movie_genres mgf WHERE mgf.movie_id = m.movie_id AND mgf.genre_id = ?)");
     params.push(Number(genre_id));
   }
 
@@ -41,12 +41,15 @@ async function getAllMovies({ page = 1, limit = 10, genre_id, release_year, sort
   // The total is needed to calculate totalPages on the frontend.
   const dataQuery = `
     SELECT m.movie_id, m.title, m.description, m.release_year,
-           m.duration, m.poster_url, m.trailer_url, m.view_count,
-           m.created_at, g.name AS genre_name
+           m.duration, m.poster_url, m.trailer_url, m.video_url,
+           m.access_level, m.view_count, m.created_at,
+           MIN(mg.genre_id) AS genre_id,
+           GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
     FROM   Movies m
-    LEFT JOIN movie_genres mg ON m.movie_id = mg.genre_id
+    LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
     LEFT JOIN Genres g       ON mg.genre_id = g.genre_id
     WHERE  ${whereClause}
+    GROUP BY m.movie_id
     ORDER BY ${orderClause}
     LIMIT  ? OFFSET ?
   `;
@@ -77,7 +80,8 @@ async function getAllMovies({ page = 1, limit = 10, genre_id, release_year, sort
 //GET by id 
 async function getMovieById(movieId) {
   const [rows] = await pool.query(
-    `SELECT m.*, GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
+    `SELECT m.*, MIN(mg.genre_id) AS genre_id,
+            GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
      FROM   Movies m
      LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
      LEFT JOIN Genres g        ON mg.genre_id = g.genre_id
@@ -96,13 +100,15 @@ async function searchMovies({ q, page = 1, limit = 10 }) {
 
   const dataQuery = `
    SELECT m.movie_id, m.title, m.description, m.release_year,
-       m.duration, m.poster_url, m.view_count,
-       g.name AS genre_name
+       m.duration, m.poster_url, m.access_level, m.view_count,
+       MIN(mg.genre_id) AS genre_id,
+       GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
     FROM   Movies m
     LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
     LEFT JOIN Genres g       ON mg.genre_id = g.genre_id
     WHERE  m.status = 'active'
       AND  (m.title LIKE ? OR m.description LIKE ?)
+    GROUP BY m.movie_id
     ORDER BY m.view_count DESC
     LIMIT  ? OFFSET ?
   `;
@@ -131,20 +137,49 @@ async function searchMovies({ q, page = 1, limit = 10 }) {
 }
 
 // CREATE
-async function createMovie({ title, description, release_year, duration, poster_url, trailer_url, genre_id }) {
-  const [result] = await pool.query(
-    `INSERT INTO Movies (title, description, release_year, duration, poster_url, trailer_url, genre_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [title, description || null, release_year || null, duration || null,
-     poster_url || null, trailer_url || null, genre_id || null]
-  );
-  return getMovieById(result.insertId); // return the full created movie
+async function createMovie({
+  title,
+  description,
+  release_year,
+  duration,
+  poster_url,
+  trailer_url,
+  video_url,
+  access_level,
+  genre_id,
+}) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query(
+      `INSERT INTO Movies (title, description, release_year, duration, poster_url, trailer_url, video_url, access_level)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [title, description || null, release_year || null, duration || null,
+       poster_url || null, trailer_url || null, video_url || null,
+       access_level || "free"]
+    );
+
+    if (genre_id) {
+      await connection.query(
+        "INSERT IGNORE INTO movie_genres (movie_id, genre_id) VALUES (?, ?)",
+        [result.insertId, Number(genre_id)]
+      );
+    }
+
+    await connection.commit();
+    return getMovieById(result.insertId); // return the full created movie
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 // UPDATE 
 async function updateMovie(movieId, fields) {
   const allowed = ["title", "description", "release_year", "duration",
-                   "poster_url", "trailer_url", "genre_id"];
+                   "poster_url", "trailer_url", "video_url", "access_level"];
 
   const setClauses = [];
   const params     = [];
@@ -156,14 +191,35 @@ async function updateMovie(movieId, fields) {
     }
   }
 
-  if (setClauses.length === 0) return null; // nothing to update
+  if (setClauses.length === 0 && fields.genre_id === undefined) return null; // nothing to update
 
   params.push(movieId);
 
-  await pool.query(
-    `UPDATE Movies SET ${setClauses.join(", ")} WHERE movie_id = ? AND status = 'active'`,
-    params
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    if (setClauses.length > 0) {
+      await connection.query(
+        `UPDATE Movies SET ${setClauses.join(", ")} WHERE movie_id = ? AND status = 'active'`,
+        params
+      );
+    }
+    if (fields.genre_id !== undefined) {
+      await connection.query("DELETE FROM movie_genres WHERE movie_id = ?", [movieId]);
+      if (fields.genre_id) {
+        await connection.query(
+          "INSERT IGNORE INTO movie_genres (movie_id, genre_id) VALUES (?, ?)",
+          [movieId, Number(fields.genre_id)]
+        );
+      }
+    }
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 
   return getMovieById(movieId);
 }

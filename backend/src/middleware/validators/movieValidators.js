@@ -62,6 +62,14 @@ exports.createMovieRules = [
     .optional()
     .isURL().withMessage("trailer_url must be a valid URL"),
 
+  body("video_url")
+    .optional()
+    .isURL().withMessage("video_url must be a valid URL"),
+
+  body("access_level")
+    .optional()
+    .isIn(["free", "premium"]).withMessage("access_level must be free or premium"),
+
   body("genre_id")
     .optional()
     .isInt({ min: 1 }).withMessage("genre_id must be a positive integer"),
@@ -91,6 +99,14 @@ exports.updateMovieRules = [
   body("trailer_url")
     .optional()
     .isURL().withMessage("trailer_url must be a valid URL"),
+
+  body("video_url")
+    .optional()
+    .isURL().withMessage("video_url must be a valid URL"),
+
+  body("access_level")
+    .optional()
+    .isIn(["free", "premium"]).withMessage("access_level must be free or premium"),
 
   body("genre_id")
     .optional()

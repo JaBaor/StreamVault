@@ -1,49 +1,94 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { useAuth } from "@/contexts/AuthContext";
+import {
+  cancelSubscription,
+  fetchMySubscription,
+  subscribeToPlan,
+  type SubscriptionStatus,
+} from "@/lib/catalog";
 
 export default function SubscriptionPage() {
-  const { user, updateProfile } = useAuth();
-  const isPremium = user?.subscriptionPlan === "premium";
+  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const upgrade = () => {
-    updateProfile({
-      subscriptionPlan: "premium",
-      subscriptionExpires: "2026-12-31",
+  const loadStatus = async () => {
+    setStatus(await fetchMySubscription());
+  };
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadStatus().catch((err) => {
+        setError(err instanceof Error ? err.message : "Could not load subscription.");
+      });
     });
+  }, []);
+
+  const changePlan = async (plan: SubscriptionStatus["plan"]) => {
+    setIsSaving(true);
+    setError("");
+    try {
+      await subscribeToPlan(plan);
+      await loadStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update subscription.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const downgrade = () => {
-    updateProfile({ subscriptionPlan: "free", subscriptionExpires: undefined });
+  const cancel = async () => {
+    setIsSaving(true);
+    setError("");
+    try {
+      await cancelSubscription();
+      await loadStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not cancel subscription.");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const isPremium = Boolean(status?.isPremium);
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-xl">
       <h2 className="text-lg font-semibold text-white">Subscription status</h2>
+      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
       <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <div className="flex items-center justify-between">
-          <span className="text-white font-medium">Current plan</span>
+          <span className="font-medium text-white">Current plan</span>
           <Badge variant={isPremium ? "premium" : "default"}>
-            {isPremium ? "Premium" : "Free"}
+            {status?.plan ?? "free"}
           </Badge>
         </div>
-        {user?.subscriptionExpires && isPremium && (
+        {status?.expiresAt && (
           <p className="mt-2 text-sm text-zinc-500">
-            Renews / expires: {user.subscriptionExpires}
+            Expires: {new Date(status.expiresAt).toLocaleDateString()}
+            {status.daysRemaining !== null ? ` (${status.daysRemaining} days left)` : ""}
           </p>
         )}
-        <ul className="mt-4 space-y-2 text-sm text-zinc-400">
-          <li>✓ Free: browse catalog, limited episodes</li>
-          <li>✓ Premium: all episodes, ad-free (demo)</li>
-        </ul>
-        <div className="mt-6 flex gap-3">
-          {!isPremium ? (
-            <Button onClick={upgrade}>Upgrade to Premium (demo)</Button>
-          ) : (
-            <Button variant="outline" onClick={downgrade}>
-              Switch to Free (demo)
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button
+            onClick={() => changePlan("premium_monthly")}
+            disabled={isSaving || status?.plan === "premium_monthly"}
+          >
+            Premium monthly
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => changePlan("premium_yearly")}
+            disabled={isSaving || status?.plan === "premium_yearly"}
+          >
+            Premium yearly
+          </Button>
+          {isPremium && (
+            <Button variant="outline" onClick={cancel} disabled={isSaving}>
+              Cancel
             </Button>
           )}
         </div>

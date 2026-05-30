@@ -12,6 +12,10 @@ exports.ratingRules = [
 ];
 
 exports.reviewRules = [
+  body("rating")
+    .isFloat({ min: 1, max: 5 })
+    .withMessage("Rating must be between 1 and 5"),
+
   body("comment")
     .trim()
     .notEmpty().withMessage("Review comment is required")

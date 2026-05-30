@@ -21,9 +21,9 @@ export default async function HomePage() {
         <section>
           <h2 className="mb-4 text-lg font-bold text-white">Browse by genre</h2>
           <div className="flex flex-wrap gap-2">
-            {genres.map((g) => (
+            {genres.map((g, i) => (
               <Link
-                key={g.id}
+                key={`${g.id}:${g.slug}:${i}`}
                 href={`/genre/${g.slug}`}
                 className="rounded-full border border-zinc-700 px-4 py-1.5 text-sm text-zinc-300 transition-colors hover:border-[var(--sv-orange)] hover:text-[var(--sv-orange)]"
               >

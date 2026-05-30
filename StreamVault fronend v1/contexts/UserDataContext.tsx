@@ -32,14 +32,14 @@ const DEFAULT_NOTIFICATIONS: Notification[] = [
     title: "New episode available",
     message: "Blade Chronicle Episode 4 is now streaming.",
     read: false,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    createdAt: "2026-05-29T00:00:00.000Z",
   },
   {
     id: "n2",
     title: "Premium sale",
     message: "Get 30% off Premium this week only.",
     read: true,
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    createdAt: "2026-05-28T00:00:00.000Z",
   },
 ];
 

@@ -43,11 +43,15 @@ async function getWatchlist(userId, { page = 1, limit = 10 }) {
   const [[movies], [[{ total }]]] = await Promise.all([
     pool.query(
       `SELECT m.movie_id, m.title, m.release_year, m.duration,
-              m.poster_url, m.view_count, g.name AS genre_name
+              m.poster_url, m.view_count,
+              MIN(mg.genre_id) AS genre_id,
+              GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
        FROM   Watchlist_Movies wm
        JOIN   Movies m  ON wm.movie_id  = m.movie_id AND m.status = 'active'
-       LEFT JOIN Genres g ON m.genre_id = g.genre_id
+       LEFT JOIN movie_genres mg ON m.movie_id = mg.movie_id
+       LEFT JOIN Genres g ON mg.genre_id = g.genre_id
        WHERE  wm.watchlist_id = ?
+       GROUP BY m.movie_id
        LIMIT  ? OFFSET ?`,
       [wl.watchlist_id, Number(limit), offset]
     ),

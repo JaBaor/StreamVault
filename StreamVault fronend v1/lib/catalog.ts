@@ -5,7 +5,7 @@ import {
 } from "./mock-data";
 import { API_URL, apiFetch } from "./api";
 import { getItem, setItem } from "./storage";
-import type { Anime, Episode, Genre } from "./types";
+import type { Anime, Episode, Genre, RatingStats, Review } from "./types";
 
 type BackendMovie = {
   movie_id: number | string;
@@ -73,6 +73,16 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
     isPremium: row.access_level === "premium" || row.access_level === "subscription",
     featured: views > 0,
   };
+}
+
+function uniqueById<T extends { id: string }>(items: T[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.id}:${"slug" in item ? String(item.slug) : ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function movieToEpisode(movie: BackendMovie | Anime): Episode {
@@ -153,18 +163,18 @@ export async function fetchCatalogAnime(): Promise<Anime[]> {
       "/movies?limit=100"
     );
     const rows = Array.isArray(result) ? result : result.data ?? [];
-    return rows.map(normalizeBackendMovie);
+    return uniqueById(rows.map(normalizeBackendMovie));
   } catch {
-    return getCatalogAnime();
+    return uniqueById(getCatalogAnime());
   }
 }
 
 export async function fetchCatalogGenres(): Promise<Genre[]> {
   try {
     const rows = await backendFetch<BackendGenre[]>("/genres");
-    return rows.map(normalizeBackendGenre);
+    return uniqueById(rows.map(normalizeBackendGenre));
   } catch {
-    return getCatalogGenres();
+    return uniqueById(getCatalogGenres());
   }
 }
 
@@ -204,4 +214,125 @@ export async function fetchWatchEpisode(animeId: string): Promise<Episode | unde
     ...movieToEpisode(anime),
     videoUrl: absoluteAsset(movie.videoUrl),
   };
+}
+
+export type MoviePayload = {
+  title: string;
+  description?: string;
+  release_year?: number;
+  duration?: number;
+  poster_url?: string;
+  trailer_url?: string;
+  video_url?: string;
+  access_level?: "free" | "premium";
+  genre_id?: number;
+};
+
+export async function createMovie(payload: MoviePayload): Promise<Anime> {
+  const movie = await apiFetch("/movies", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return normalizeBackendMovie(movie);
+}
+
+export async function updateMovie(id: string, payload: Partial<MoviePayload>): Promise<Anime> {
+  const movie = await apiFetch(`/movies/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return normalizeBackendMovie(movie);
+}
+
+export async function deleteMovie(id: string): Promise<void> {
+  await apiFetch(`/movies/${id}`, { method: "DELETE" });
+}
+
+export async function fetchRatingStats(movieId: string): Promise<RatingStats> {
+  return apiFetch(`/movies/${movieId}/ratings`);
+}
+
+export async function fetchReviews(movieId: string): Promise<Review[]> {
+  const result = await apiFetch(`/movies/${movieId}/reviews?limit=20`);
+  return result.data ?? [];
+}
+
+export async function submitRating(movieId: string, rating: number): Promise<void> {
+  await apiFetch(`/movies/${movieId}/rating`, {
+    method: "POST",
+    body: JSON.stringify({ rating }),
+  });
+}
+
+export async function submitReview(movieId: string, comment: string, rating: number): Promise<void> {
+  await apiFetch(`/movies/${movieId}/reviews`, {
+    method: "POST",
+    body: JSON.stringify({ comment, rating }),
+  });
+}
+
+export type AdminUser = {
+  user_id: number | string;
+  username: string;
+  email: string;
+  role: "member" | "admin";
+  status: "active" | "deactivated";
+  avatar_url?: string | null;
+  created_at?: string;
+};
+
+export type AdminStats = {
+  totalUsers: number;
+  totalMovies: number;
+  totalGenres: number;
+  viewsToday: number;
+};
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const result = await apiFetch("/admin/users?limit=100");
+  return result.data ?? [];
+}
+
+export async function updateAdminUserRole(id: string, role: "member" | "admin") {
+  return apiFetch(`/admin/users/${id}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function updateAdminUserStatus(
+  id: string,
+  status: "active" | "deactivated"
+) {
+  return apiFetch(`/admin/users/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function fetchAdminStats(): Promise<AdminStats> {
+  return apiFetch("/admin/stats");
+}
+
+export type SubscriptionStatus = {
+  plan: "free" | "premium_monthly" | "premium_yearly";
+  isPremium: boolean;
+  status: string;
+  expiresAt: string | null;
+  daysRemaining: number | null;
+};
+
+export async function fetchMySubscription(): Promise<SubscriptionStatus> {
+  return apiFetch("/subscriptions/me");
+}
+
+export async function subscribeToPlan(plan: SubscriptionStatus["plan"]) {
+  return apiFetch("/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+export async function cancelSubscription() {
+  return apiFetch("/subscriptions", { method: "DELETE" });
 }

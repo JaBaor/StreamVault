@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -33,11 +34,12 @@ type BackendUser = {
   id: number | string;
   username?: string;
   email?: string;
-  role?: "member" | "admin" | string;
+  role?: "member" | "subscriber" | "admin" | string;
 };
 
 function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
-  const role: UserRole = user.role === "admin" ? "admin" : "subscriber";
+  const role: UserRole =
+    user.role === "admin" ? "admin" : user.role === "subscriber" ? "subscriber" : "member";
   return {
     id: String(user.id),
     email: user.email ?? fallbackEmail,
@@ -48,10 +50,14 @@ function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() =>
-    getItem<User | null>("user", null)
-  );
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setUser(getItem<User | null>("user", null));
+    });
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {

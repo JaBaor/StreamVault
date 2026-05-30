@@ -26,7 +26,12 @@ exports.getRatings = async (req, res) => {
 //POST /api/v1/movies/:movieId/reviews 
 exports.submitReview = async (req, res) => {
   await requireMovie(req.params.movieId);
-  await reviewModel.upsertReview(req.user.id, req.params.movieId, req.body.comment);
+  await reviewModel.upsertReview(
+    req.user.id,
+    req.params.movieId,
+    req.body.comment,
+    req.body.rating
+  );
   res.json({ message: "Review submitted" });
 };
 

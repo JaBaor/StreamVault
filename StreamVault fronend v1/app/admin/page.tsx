@@ -1,21 +1,36 @@
 "use client";
 
-import { getCatalogAnime, getCatalogGenres } from "@/lib/catalog";
-import { DEMO_ACCOUNTS } from "@/lib/mock-data";
-import { getItem } from "@/lib/storage";
-import type { User } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { fetchAdminStats, type AdminStats } from "@/lib/catalog";
 
 export default function AdminDashboardPage() {
-  const anime = getCatalogAnime();
-  const genres = getCatalogGenres();
-  const registered = getItem<User[]>("registered-users", []);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void fetchAdminStats()
+      .then(setStats)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Could not load dashboard stats.");
+      });
+  }, []);
+
+  const values = stats ?? {
+    totalUsers: 0,
+    totalMovies: 0,
+    totalGenres: 0,
+    viewsToday: 0,
+  };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="Anime titles" value={anime.length} />
-      <StatCard label="Genres" value={genres.length} />
-      <StatCard label="Users" value={DEMO_ACCOUNTS.length + registered.length} />
-      <StatCard label="Premium shows" value={anime.filter((a) => a.isPremium).length} />
+    <div>
+      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Users" value={values.totalUsers} />
+        <StatCard label="Movies" value={values.totalMovies} />
+        <StatCard label="Genres" value={values.totalGenres} />
+        <StatCard label="Views today" value={values.viewsToday} />
+      </div>
     </div>
   );
 }
