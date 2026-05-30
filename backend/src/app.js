@@ -3,6 +3,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 const { NotFoundError } = require("./errors/errors");
 const corsOptions = require("./config/corsOptions");
 const v1Router = require("./routes/index");
