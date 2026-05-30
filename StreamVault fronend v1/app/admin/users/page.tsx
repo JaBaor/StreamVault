@@ -77,6 +77,7 @@ export default function AdminUsersPage() {
                       className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white"
                     >
                       <option value="member">member</option>
+                      <option value="subscriber">subscriber</option>
                       <option value="admin">admin</option>
                     </select>
                   </div>

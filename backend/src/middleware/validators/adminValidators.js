@@ -1,6 +1,6 @@
 const { param, body, query } = require("express-validator");
 
-const VALID_ROLES    = ["member", "admin"];
+const VALID_ROLES    = ["member", "subscriber", "admin"];
 const VALID_STATUSES = ["active", "deactivated"];
 const VALID_PERIODS  = ["week", "month"];
 const VALID_ACTIONS  = ["CREATE", "UPDATE", "DELETE", "ROLE_CHANGE",

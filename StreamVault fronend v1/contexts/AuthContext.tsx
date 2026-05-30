@@ -51,11 +51,12 @@ function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     queueMicrotask(() => {
       setUser(getItem<User | null>("user", null));
+      setIsLoading(false);
     });
   }, []);
 
@@ -134,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       updateProfile,
-      isSubscriber: role === "subscriber" || role === "admin",
+      isSubscriber: role === "member" || role === "subscriber" || role === "admin",
       isAdmin: role === "admin",
     }),
     [user, role, isLoading, login, register, logout, updateProfile]

@@ -1,4 +1,5 @@
 const subscriptionModel = require("../models/subscriptionModel");
+const pool = require("../config/db");
 
 // ── Plan config — durations and labels 
 const PLAN_CONFIG = {
@@ -91,16 +92,19 @@ async function subscribe(userId, plan) {
   if (plan === "free") {
     // Subscribing to free = cancelling
     await subscriptionModel.cancel(userId);
+    await pool.query("UPDATE Users SET role = 'member' WHERE user_id = ? AND role = 'subscriber'", [userId]);
     return getStatus(userId);
   }
 
   const expiresAt = calcExpiresAt(plan);
   await subscriptionModel.upsert(userId, plan, expiresAt);
+  await pool.query("UPDATE Users SET role = 'subscriber' WHERE user_id = ? AND role = 'member'", [userId]);
   return getStatus(userId);
 }
 
 async function cancel(userId) {
   await subscriptionModel.cancel(userId);
+  await pool.query("UPDATE Users SET role = 'member' WHERE user_id = ? AND role = 'subscriber'", [userId]);
   return getStatus(userId);
 }
 

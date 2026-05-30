@@ -14,7 +14,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({
   children,
-  allowedRoles = ["subscriber", "admin"],
+  allowedRoles = ["member", "subscriber", "admin"],
   redirectTo = "/login",
   fallback,
 }: AuthGuardProps) {
@@ -55,7 +55,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
 
 export function SubscriberGuard({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuard allowedRoles={["subscriber", "admin"]} redirectTo="/login">
+    <AuthGuard allowedRoles={["member", "subscriber", "admin"]} redirectTo="/login">
       {children}
     </AuthGuard>
   );

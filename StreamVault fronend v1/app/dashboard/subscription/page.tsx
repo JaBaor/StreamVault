@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -9,15 +9,26 @@ import {
   subscribeToPlan,
   type SubscriptionStatus,
 } from "@/lib/catalog";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SubscriptionPage() {
+  const { updateProfile } = useAuth();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const loadStatus = async () => {
-    setStatus(await fetchMySubscription());
-  };
+  const applyStatus = useCallback((next: SubscriptionStatus) => {
+    setStatus(next);
+    updateProfile({
+      role: next.isPremium ? "subscriber" : "member",
+      subscriptionPlan: next.isPremium ? "premium" : "free",
+      subscriptionExpires: next.expiresAt ?? undefined,
+    });
+  }, [updateProfile]);
+
+  const loadStatus = useCallback(async () => {
+    applyStatus(await fetchMySubscription());
+  }, [applyStatus]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -25,14 +36,14 @@ export default function SubscriptionPage() {
         setError(err instanceof Error ? err.message : "Could not load subscription.");
       });
     });
-  }, []);
+  }, [loadStatus]);
 
   const changePlan = async (plan: SubscriptionStatus["plan"]) => {
     setIsSaving(true);
     setError("");
     try {
-      await subscribeToPlan(plan);
-      await loadStatus();
+      const result = await subscribeToPlan(plan);
+      applyStatus(result.subscription);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update subscription.");
     } finally {
@@ -44,8 +55,8 @@ export default function SubscriptionPage() {
     setIsSaving(true);
     setError("");
     try {
-      await cancelSubscription();
-      await loadStatus();
+      const result = await cancelSubscription();
+      applyStatus(result.subscription);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not cancel subscription.");
     } finally {

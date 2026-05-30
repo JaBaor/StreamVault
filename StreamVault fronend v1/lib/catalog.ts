@@ -275,7 +275,7 @@ export type AdminUser = {
   user_id: number | string;
   username: string;
   email: string;
-  role: "member" | "admin";
+  role: "member" | "subscriber" | "admin";
   status: "active" | "deactivated";
   avatar_url?: string | null;
   created_at?: string;
@@ -293,7 +293,7 @@ export async function fetchAdminUsers(): Promise<AdminUser[]> {
   return result.data ?? [];
 }
 
-export async function updateAdminUserRole(id: string, role: "member" | "admin") {
+export async function updateAdminUserRole(id: string, role: AdminUser["role"]) {
   return apiFetch(`/admin/users/${id}/role`, {
     method: "PUT",
     body: JSON.stringify({ role }),
@@ -326,13 +326,18 @@ export async function fetchMySubscription(): Promise<SubscriptionStatus> {
   return apiFetch("/subscriptions/me");
 }
 
-export async function subscribeToPlan(plan: SubscriptionStatus["plan"]) {
+export async function subscribeToPlan(
+  plan: SubscriptionStatus["plan"]
+): Promise<{ message: string; subscription: SubscriptionStatus }> {
   return apiFetch("/subscriptions", {
     method: "POST",
     body: JSON.stringify({ plan }),
   });
 }
 
-export async function cancelSubscription() {
+export async function cancelSubscription(): Promise<{
+  message: string;
+  subscription: SubscriptionStatus;
+}> {
   return apiFetch("/subscriptions", { method: "DELETE" });
 }
