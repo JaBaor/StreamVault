@@ -5,11 +5,17 @@ const next = require("next");
 require("./backend/src/config/env");
 
 const dev = process.env.NODE_ENV !== "production";
-const nextApp = next({ dev, dir: path.join(__dirname, "frontend") });
-const handle = nextApp.getRequestHandler();
 const PORT = process.env.PORT || 3000;
 
-nextApp.prepare().then(() => {
+async function main() {
+  console.log(`[server] Starting in ${dev ? "development" : "production"} mode on port ${PORT}`);
+
+  const nextApp = next({ dev, dir: path.join(__dirname, "frontend") });
+  const handle = nextApp.getRequestHandler();
+
+  await nextApp.prepare();
+  console.log("[server] Next.js ready");
+
   const express = require("express");
   const apiApp = express();
 
@@ -32,6 +38,11 @@ nextApp.prepare().then(() => {
   });
 
   server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`[server] Listening on port ${PORT}`);
   });
+}
+
+main().catch((err) => {
+  console.error("[server] Fatal error:", err);
+  process.exit(1);
 });
