@@ -31,8 +31,8 @@ async function createUser(displayName, email, hashedPassword, role = "GUEST") {
 
 async function getUserByUsername(username) {
   const [rows] = await pool.query(
-    "SELECT *, id AS user_id, display_name AS username FROM users WHERE (email = ? OR display_name = ?) AND status = 'ACTIVE'",
-    [username, username]
+    "SELECT *, id AS user_id, display_name AS username FROM users WHERE (email = ? OR display_name = ?) AND status = 'ACTIVE' ORDER BY email = ? DESC, id ASC",
+    [username, username, username]
   );
   return mapUser(rows[0]);
 }

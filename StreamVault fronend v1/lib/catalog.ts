@@ -39,10 +39,18 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeGoogleDriveUrl(url: string) {
+  const match = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (match) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+  return null;
+}
+
 function absoluteAsset(url?: string | null) {
   if (!url) return "/window.svg";
   const abyss = normalizeAbyssUrl(url);
   if (abyss) return abyss;
+  const gdrive = normalizeGoogleDriveUrl(url);
+  if (gdrive) return gdrive;
   if (/^https?:\/\//i.test(url) || url.startsWith("/")) return url;
   const base = API_URL.replace(/\/api\/v1$/, "");
   return `${base}/${url.replace(/^\/+/, "")}`;

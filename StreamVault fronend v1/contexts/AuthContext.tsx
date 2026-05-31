@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch, clearAccessToken, setAccessToken } from "@/lib/api";
 import { hasPremiumAccess } from "@/lib/access";
 import { getItem, removeItem, setItem } from "@/lib/storage";
@@ -52,6 +53,7 @@ function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,7 +62,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(getItem<User | null>("user", null));
       setIsLoading(false);
     });
-  }, []);
+    const onSessionExpired = () => {
+      clearAccessToken();
+      setUser(null);
+      removeItem("user");
+      const isLoginPage = window.location.pathname.startsWith("/login");
+      if (!isLoginPage) {
+        router.replace("/login");
+      }
+    };
+    window.addEventListener("streamvault:session-expired", onSessionExpired);
+    return () => window.removeEventListener("streamvault:session-expired", onSessionExpired);
+  }, [router]);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -106,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    void apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
+    void apiFetch("/auth/logout", { method: "POST", _silent: true }).catch(() => undefined);
     clearAccessToken();
     setUser(null);
     removeItem("user");

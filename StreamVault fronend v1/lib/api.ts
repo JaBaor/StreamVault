@@ -32,7 +32,7 @@ async function refreshAccessToken() {
 
 export async function apiFetch(
   endpoint: string,
-  options: RequestInit & { _retried?: boolean } = {}
+  options: RequestInit & { _retried?: boolean; _silent?: boolean } = {}
 ) {
   const token = getAccessToken();
   const headers = new Headers(options.headers);
@@ -58,8 +58,8 @@ export async function apiFetch(
         return apiFetch(endpoint, { ...options, headers, _retried: true });
       }
       clearAccessToken();
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
+      if (typeof window !== "undefined" && !options._silent) {
+        window.dispatchEvent(new CustomEvent("streamvault:session-expired"));
       }
       throw new Error("Session expired. Please log in again.");
     }

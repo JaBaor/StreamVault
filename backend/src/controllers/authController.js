@@ -64,10 +64,10 @@ exports.login = async (req, res, next)=>{
     // 5. Send REFRESH token as httpOnly so J cant read
     //    Send ACCESS token in JSON body so client can use it in headers
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,     // JS cant access this cookie
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, 
+      sameSite: "Lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     res.json({message:"Login successful", accessToken,
       user: {
@@ -134,7 +134,7 @@ exports.logout = async (req, res, next)=>{
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
+      sameSite: "Lax",
     });
 
     res.json({message:"Logged out successfully"});

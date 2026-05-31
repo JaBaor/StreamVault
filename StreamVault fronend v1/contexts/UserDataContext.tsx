@@ -66,7 +66,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       }
     });
     if (uid && canUseWatchlist) {
-      void apiFetch("/watchlist?limit=100")
+      void apiFetch("/watchlist?limit=100", { _silent: true })
         .then((result) => {
           const ids = (result.data ?? []).map((movie: { movie_id: number | string }) =>
             String(movie.movie_id)
@@ -75,7 +75,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
           setItem(storageKey(uid, "watchlist"), ids);
         })
         .catch(() => undefined);
-      void apiFetch("/watch-history?limit=100")
+      void apiFetch("/watch-history?limit=100", { _silent: true })
         .then((result) => {
           const items = (result.data ?? []).map(
             (row: {
