@@ -1,4 +1,4 @@
-const express = require("express");
+const http = require("http");
 const path = require("path");
 const next = require("next");
 
@@ -10,22 +10,28 @@ const handle = nextApp.getRequestHandler();
 const PORT = process.env.PORT || 3000;
 
 nextApp.prepare().then(() => {
-  const app = express();
+  const express = require("express");
+  const apiApp = express();
 
-  app.use(require("cors")(require("./backend/src/config/corsOptions")));
-  app.use(express.json());
-  app.use(require("morgan")("dev"));
-  app.use(require("cookie-parser")());
+  apiApp.use(require("cors")(require("./backend/src/config/corsOptions")));
+  apiApp.use(express.json());
+  apiApp.use(require("morgan")("dev"));
+  apiApp.use(require("cookie-parser")());
 
-  app.use("/uploads", express.static(path.join(__dirname, "backend/public/uploads")));
+  apiApp.use("/uploads", express.static(path.join(__dirname, "backend/public/uploads")));
+  apiApp.use("/api/v1", require("./backend/src/routes/index"));
+  apiApp.use(require("./backend/src/middleware/errorHandler"));
 
-  app.use("/api/v1", require("./backend/src/routes/index"));
+  const server = http.createServer((req, res) => {
+    if (req.url.startsWith("/api/v1") || req.url.startsWith("/uploads")) {
+      apiApp(req, res);
+    } else {
+      req.headers.host = req.headers.host || "localhost";
+      handle(req, res);
+    }
+  });
 
-  app.all("*", (req, res) => handle(req, res));
-
-  app.use(require("./backend/src/middleware/errorHandler"));
-
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 });
