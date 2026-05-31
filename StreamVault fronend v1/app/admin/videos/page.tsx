@@ -26,6 +26,7 @@ const emptyForm: MovieForm = {
   video_url: "",
   access_level: "free",
   type: "MOVIE",
+  airing_status: "completed",
 };
 
 export default function AdminVideosPage() {
@@ -96,6 +97,7 @@ export default function AdminVideosPage() {
       access_level: editing.access_level,
       genre_id: editing.genre_id ? Number(editing.genre_id) : undefined,
       type: editing.type,
+      airing_status: editing.airing_status,
     };
 
     try {
@@ -129,6 +131,7 @@ export default function AdminVideosPage() {
       access_level: anime.isPremium ? "premium" : "free",
       genre_id: anime.genreIds[0] ? Number(anime.genreIds[0]) : undefined,
       type: anime.type || "MOVIE",
+      airing_status: anime.status === "ongoing" ? "ongoing" : "completed",
     });
     if (anime.type === "SERIES") {
       loadEpisodes(anime.id);
@@ -249,6 +252,22 @@ export default function AdminVideosPage() {
             >
               <option value="MOVIE">Movie</option>
               <option value="SERIES">TV Series</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300">
+            Status
+            <select
+              value={editing.airing_status ?? "completed"}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  airing_status: e.target.value as "ongoing" | "completed",
+                })
+              }
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-[var(--sv-orange)] focus:outline-none"
+            >
+              <option value="completed">Completed</option>
+              <option value="ongoing">Ongoing</option>
             </select>
           </label>
           <Input

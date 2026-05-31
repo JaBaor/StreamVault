@@ -104,9 +104,25 @@ async function getUserWithPasswordById(userId) {
   return mapUser(rows[0]);
 }
 
+async function getUserByEmail(email) {
+  const [rows] = await pool.query(
+    "SELECT *, id AS user_id, display_name AS username FROM users WHERE email = ? AND status = 'ACTIVE'",
+    [email]
+  );
+  return mapUser(rows[0]);
+}
+
+async function saveOAuthInfo(userId, provider, oauthId) {
+  await pool.query(
+    "UPDATE users SET oauth_provider = ?, oauth_id = ? WHERE id = ?",
+    [provider, oauthId, userId]
+  );
+}
+
 module.exports = {
   createUser,
   getUserByUsername,
+  getUserByEmail,
   saveRefreshToken,
   getUserByRefreshToken,
   clearRefreshToken,
@@ -114,6 +130,7 @@ module.exports = {
   updateProfile,
   updatePassword,
   getUserWithPasswordById,
+  saveOAuthInfo,
   toDbRole,
   mapUser,
 };

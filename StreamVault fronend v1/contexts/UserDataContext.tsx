@@ -23,26 +23,10 @@ interface UserDataContextValue {
   addToHistory: (item: Omit<WatchHistoryItem, "watchedAt">) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  unreadCount: number;
 }
 
 const UserDataContext = createContext<UserDataContextValue | null>(null);
-
-const DEFAULT_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    title: "New episode available",
-    message: "Blade Chronicle Episode 4 is now streaming.",
-    read: false,
-    createdAt: "2026-05-29T00:00:00.000Z",
-  },
-  {
-    id: "n2",
-    title: "Premium sale",
-    message: "Get 30% off Premium this week only.",
-    read: true,
-    createdAt: "2026-05-28T00:00:00.000Z",
-  },
-];
 
 function storageKey(userId: string | null, key: string) {
   return userId ? `${key}:${userId}` : key;
@@ -55,15 +39,36 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>(DEFAULT_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Load notifications from backend
+  const loadNotifications = useCallback(async () => {
+    if (!uid) return;
+    try {
+      const result = await apiFetch("/notifications?limit=50", { _silent: true });
+      const items: Notification[] = (result.data ?? []).map((n: { id: number; title: string; message: string; is_read: number; created_at: string }) => ({
+        id: String(n.id),
+        title: n.title,
+        message: n.message ?? "",
+        read: Boolean(n.is_read),
+        createdAt: n.created_at,
+      }));
+      setNotifications(items);
+      setItem(storageKey(uid, "notifications"), items);
+
+      const uc = await apiFetch("/notifications/unread-count", { _silent: true });
+      setUnreadCount(uc.count ?? 0);
+    } catch {
+      const cached = getItem<Notification[]>(storageKey(uid, "notifications"), []);
+      setNotifications(cached);
+    }
+  }, [uid]);
 
   useEffect(() => {
     queueMicrotask(() => {
       setWatchlist(canUseWatchlist ? getItem(storageKey(uid, "watchlist"), []) : []);
       setHistory(getItem(storageKey(uid, "history"), []));
-      if (uid) {
-        setNotifications(getItem(storageKey(uid, "notifications"), DEFAULT_NOTIFICATIONS));
-      }
     });
     if (uid && canUseWatchlist) {
       void apiFetch("/watchlist?limit=100", { _silent: true })
@@ -78,12 +83,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       void apiFetch("/watch-history?limit=100", { _silent: true })
         .then((result) => {
           const items = (result.data ?? []).map(
-            (row: {
-              movie_id: number | string;
-              history_id?: number | string;
-              progress_seconds?: number;
-              watched_at?: string;
-            }) => ({
+            (row: { movie_id: number | string; progress_seconds?: number; watched_at?: string }) => ({
               animeId: String(row.movie_id),
               episodeId: "full",
               progress: row.progress_seconds ?? 0,
@@ -95,7 +95,8 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(() => undefined);
     }
-  }, [uid, canUseWatchlist]);
+    void loadNotifications();
+  }, [uid, canUseWatchlist, loadNotifications]);
 
   const persistWatchlist = useCallback(
     (next: string[]) => {
@@ -155,27 +156,34 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const markNotificationRead = useCallback(
-    (id: string) => {
-      const next = notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n
-      );
-      setNotifications(next);
-      if (uid) setItem(storageKey(uid, "notifications"), next);
+    async (id: string) => {
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      if (uid) {
+        try {
+          await apiFetch(`/notifications/${id}/read`, { method: "PUT" });
+        } catch { /* ignore */ }
+      }
     },
-    [notifications, uid]
+    [uid]
   );
 
-  const markAllNotificationsRead = useCallback(() => {
-    const next = notifications.map((n) => ({ ...n, read: true }));
-    setNotifications(next);
-    if (uid) setItem(storageKey(uid, "notifications"), next);
-  }, [notifications, uid]);
+  const markAllNotificationsRead = useCallback(async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    if (uid) {
+      try {
+        await apiFetch("/notifications/read-all", { method: "PUT" });
+      } catch { /* ignore */ }
+    }
+  }, [uid]);
 
   const value = useMemo(
     () => ({
       watchlist,
       history,
       notifications,
+      unreadCount,
       toggleWatchlist,
       isInWatchlist,
       addToHistory,
@@ -183,14 +191,9 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
       markAllNotificationsRead,
     }),
     [
-      watchlist,
-      history,
-      notifications,
-      toggleWatchlist,
-      isInWatchlist,
-      addToHistory,
-      markNotificationRead,
-      markAllNotificationsRead,
+      watchlist, history, notifications, unreadCount,
+      toggleWatchlist, isInWatchlist, addToHistory,
+      markNotificationRead, markAllNotificationsRead,
     ]
   );
 

@@ -12,14 +12,17 @@ const adminRoutes        = require("./adminRoutes");
 const subscriptionRoutes = require("./subscriptionRoutes");
 
 router.use("/auth", authRoutes);
+router.use("/auth", require("./oauthRoutes"));
 router.use("/movies", movieRoutes);
 router.use("/genres", genreRoutes);
 router.use("/watch-history", watchHistoryRoutes);
 router.use("/watchlist", watchlistRoutes);
-router.use("/movies/:movieId", reviewRoutes);   // ← mergeParams on reviewRoutes handles :movieId
+router.use("/movies/:movieId", reviewRoutes);   
 router.use("/movies/:movieId/episodes", require("./episodeRoutes"));
+router.use("/movies/:movieId/subscriptions", require("./seriesSubscriptionRoutes"));
 router.use("/users", userRoutes);
 router.use("/admin", adminRoutes); 
 router.use("/subscriptions",   subscriptionRoutes);
+router.use("/notifications", require("./notificationRoutes"));
 
 module.exports = router;

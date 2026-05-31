@@ -94,13 +94,19 @@ exports.getStats = async (req, res) => {
 
 // ── GET /api/v1/admin/stats/signups?period=week 
 exports.getSignupStats = async (req, res) => {
-  const data = await adminModel.getSignupStats(req.query.period);
+  const data = await adminModel.getSignupStats(req.query.period, req.query.from, req.query.to);
   res.json(data);
 };
 
 // ── GET /api/v1/admin/stats/top-movies?limit=10 
 exports.getTopMovies = async (req, res) => {
   const data = await adminModel.getTopMovies(req.query.limit);
+  res.json(data);
+};
+
+// ── GET /api/v1/admin/stats/subscription-plans
+exports.getSubscriptionPlanStats = async (req, res) => {
+  const data = await adminModel.getSubscriptionPlanStats();
   res.json(data);
 };
 

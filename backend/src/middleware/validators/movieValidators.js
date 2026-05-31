@@ -79,6 +79,10 @@ exports.createMovieRules = [
     .optional()
     .isIn(["MOVIE", "SERIES", "movie", "series"]).withMessage("type must be MOVIE or SERIES"),
 
+  body("airing_status")
+    .optional()
+    .isIn(["ongoing", "completed"]).withMessage("airing_status must be ongoing or completed"),
+
   body("access_level")
     .optional()
     .isIn(["free", "premium"]).withMessage("access_level must be free or premium"),
@@ -120,6 +124,10 @@ exports.updateMovieRules = [
   body("type")
     .optional()
     .isIn(["MOVIE", "SERIES", "movie", "series"]).withMessage("type must be MOVIE or SERIES"),
+
+  body("airing_status")
+    .optional()
+    .isIn(["ongoing", "completed"]).withMessage("airing_status must be ongoing or completed"),
 
   body("access_level")
     .optional()

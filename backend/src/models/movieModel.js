@@ -72,6 +72,7 @@ const selectMovieFields = `
   v.storage_key,
   v.slug,
   v.type,
+  v.airing_status,
   v.status,
   v.view_count,
   v.age_rating,
@@ -186,8 +187,8 @@ async function createMovie(fields) {
     await connection.beginTransaction();
     const [result] = await connection.query(
       `INSERT INTO videos
-       (title, description, release_year, duration_seconds, thumbnail_url, trailer_url, video_url, type, is_premium, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+       (title, description, release_year, duration_seconds, thumbnail_url, trailer_url, video_url, type, airing_status, is_premium, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
       [
         title,
         description || null,
@@ -197,6 +198,7 @@ async function createMovie(fields) {
         trailer_url || null,
         normalizeVideoInput(video_url),
         String(type).toUpperCase(),
+        fields.airing_status || "completed",
         is_premium !== undefined ? Boolean(is_premium) : access_level === "premium",
       ]
     );
@@ -232,6 +234,7 @@ async function updateMovie(movieId, fields) {
     "trailer_url",
     "video_url",
     "type",
+    "airing_status",
     "age_rating",
     "is_premium",
   ];

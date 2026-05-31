@@ -42,6 +42,9 @@ router.get( "/stats/signups",
 router.get( "/stats/top-movies",
   topMoviesRules, validate, ctrl.getTopMovies);
 
+router.get( "/stats/subscription-plans",
+  ctrl.getSubscriptionPlanStats);
+
 // ── Audit log 
 router.get( "/audit-logs",
   auditLogRules, validate, ctrl.getAuditLogs);

@@ -2,6 +2,7 @@ require("./config/env");
 
 const app = require("./app");
 const pool = require("./config/db");
+const { startCronJobs } = require("./services/cronService");
 const PORT = process.env.PORT || 5000;
 
 async function startServer(){
@@ -11,6 +12,9 @@ async function startServer(){
     console.log("MySQL connected");
     
     connection.release();
+
+    startCronJobs();
+
     app.listen(PORT, ()=>{
       console.log(`Server running on port${PORT}`);
     });

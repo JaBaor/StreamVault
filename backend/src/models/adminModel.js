@@ -114,12 +114,17 @@ async function getStats() {
   };
 }
 
-async function getSignupStats(period = "week") {
-  const days = period === "month" ? 30 : 7;
+async function getSignupStats(period = "week", from, to) {
+  const days = period === "custom"
+    ? Math.ceil((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24)) + 1
+    : period === "month" ? 30 : 7;
+  const fromDate = period === "custom" ? from : `DATE_SUB(CURDATE(), INTERVAL ${days} DAY)`;
+  const toDate = period === "custom" ? to : "CURDATE()";
+
   const [rows] = await pool.query(
-    `SELECT dates.date, COUNT(u.id) AS signups
+    `SELECT dates.date, COALESCE(COUNT(u.id), 0) AS signups
      FROM (
-       SELECT DATE(DATE_SUB(CURDATE(), INTERVAL seq DAY)) AS date
+       SELECT DATE(${fromDate} + INTERVAL seq DAY) AS date
        FROM (
          SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
          UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7
@@ -133,11 +138,24 @@ async function getSignupStats(period = "week") {
        WHERE seq < ?
      ) dates
      LEFT JOIN users u ON DATE(u.created_at) = dates.date
+     WHERE dates.date >= ${fromDate} AND dates.date <= ${toDate}
      GROUP BY dates.date
      ORDER BY dates.date ASC`,
     [days]
   );
   return rows.map((r) => ({ date: r.date, signups: Number(r.signups) }));
+}
+
+async function getSubscriptionPlanStats() {
+  const [rows] = await pool.query(
+    `SELECT plan, COUNT(*) AS count FROM (
+      SELECT s.plan FROM subscriptions s WHERE s.status = 'ACTIVE'
+      UNION ALL
+      SELECT 'FREE' FROM users u
+      WHERE NOT EXISTS (SELECT 1 FROM subscriptions WHERE user_id = u.id AND status = 'ACTIVE')
+    ) plans GROUP BY plan`
+  );
+  return rows;
 }
 
 async function getTopMovies(limit = 10) {
@@ -166,4 +184,5 @@ module.exports = {
   getStats,
   getSignupStats,
   getTopMovies,
+  getSubscriptionPlanStats,
 };

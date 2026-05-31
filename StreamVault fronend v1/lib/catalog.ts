@@ -23,6 +23,7 @@ type BackendMovie = {
   genre_name?: string | null;
   access_level?: string | null;
   type?: string | null;
+  airing_status?: string | null;
 };
 
 type BackendGenre = {
@@ -92,7 +93,7 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
     bannerUrl: absoluteAsset(row.banner_url || row.poster_url),
     rating: Math.max(0, Math.min(10, Number((views / 1000 + 7).toFixed(1)))),
     year: Number(row.release_year) || new Date().getFullYear(),
-    status: "completed",
+    status: row.airing_status === "ongoing" ? "ongoing" : "completed",
     genreIds,
     episodeCount: 1,
     isPremium: row.access_level === "premium" || row.access_level === "subscription",
@@ -306,6 +307,7 @@ export type MoviePayload = {
   access_level?: "free" | "premium";
   genre_id?: number;
   type?: "MOVIE" | "SERIES";
+  airing_status?: "ongoing" | "completed";
 };
 
 export async function createMovie(payload: MoviePayload): Promise<Anime> {
@@ -414,6 +416,50 @@ export type SubscriptionStatus = {
 
 export async function fetchMySubscription(): Promise<SubscriptionStatus> {
   return apiFetch("/subscriptions/me");
+}
+
+export async function fetchSignupStats(period: string, from?: string, to?: string): Promise<{ date: string; signups: number }[]> {
+  const params = new URLSearchParams({ period });
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  return apiFetch(`/admin/stats/signups?${params}`);
+}
+
+export async function fetchTopMovies(limit = 10): Promise<{ movie_id: number; title: string; view_count: number }[]> {
+  return apiFetch(`/admin/stats/top-movies?limit=${limit}`);
+}
+
+export async function fetchSubscriptionPlanStats(): Promise<{ plan: string; count: number }[]> {
+  return apiFetch("/admin/stats/subscription-plans");
+}
+
+export async function fetchNotifications(page = 1): Promise<{ data: { id: number; type: string; title: string; message: string; is_read: number; created_at: string }[]; total: number }> {
+  return apiFetch(`/notifications?page=${page}`);
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  return apiFetch(`/notifications/${id}/read`, { method: "PUT" });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  return apiFetch("/notifications/read-all", { method: "PUT" });
+}
+
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const result = await apiFetch("/notifications/unread-count");
+  return result.count;
+}
+
+export async function subscribeToSeries(movieId: string): Promise<void> {
+  return apiFetch(`/movies/${movieId}/subscriptions/subscribe`, { method: "POST" });
+}
+
+export async function unsubscribeFromSeries(movieId: string): Promise<void> {
+  return apiFetch(`/movies/${movieId}/subscriptions/unsubscribe`, { method: "POST" });
+}
+
+export async function fetchSeriesSubscriptionStatus(movieId: string): Promise<{ subscribed: boolean }> {
+  return apiFetch(`/movies/${movieId}/subscriptions/status`);
 }
 
 export async function subscribeToPlan(

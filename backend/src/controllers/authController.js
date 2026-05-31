@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const userModel = require("../models/userModel");
 const { ConflictError, UnauthorizedError } = require("../errors/errors");
-//Refresh token
+
 function generateRefreshToken(){
   return crypto.randomBytes(40).toString("hex");
 }
@@ -13,16 +13,23 @@ exports.register = async(req, res, next)=>{
   try{
     const {username, email, password, role} = req.body;
 
-    //Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    //Save user to database
-    const userId = await userModel.createUser(username,email, hashedPassword, role);
+    const userId = await userModel.createUser(username, email, hashedPassword, role);
+
+    // Async: welcome email + notification
+    const emailService = require("../services/emailService");
+    const notificationModel = require("../models/notificationModel");
+    emailService.sendWelcomeEmail({ email, display_name: username }).catch(() => {});
+    notificationModel.createNotification({
+      userId, type: "welcome",
+      title: "Welcome to StreamVault!",
+      message: "Your account has been created. Start exploring movies and series.",
+    }).catch(() => {});
 
     res.status(201).json({message: "User registered successfully", userId});
   } catch(error){
-    // Duplicate username/email → MySQL error 1062
     if (error.code === "ER_DUP_ENTRY") {
       return next(new ConflictError("Username or email already exists"));
     }
