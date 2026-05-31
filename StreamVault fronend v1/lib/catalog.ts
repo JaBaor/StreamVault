@@ -22,6 +22,7 @@ type BackendMovie = {
   genre_id?: number | string | null;
   genre_name?: string | null;
   access_level?: string | null;
+  type?: string | null;
 };
 
 type BackendGenre = {
@@ -72,6 +73,7 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
   const id = String(row.movie_id);
   const genreIds = row.genre_id ? [String(row.genre_id)] : [];
   const views = Number(row.view_count ?? 0);
+  const movieType = row.type?.toUpperCase() === "SERIES" ? "SERIES" : "MOVIE";
   return {
     id,
     slug: `${slugify(row.title) || "movie"}-${id}`,
@@ -86,6 +88,8 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
     episodeCount: 1,
     isPremium: row.access_level === "premium" || row.access_level === "subscription",
     featured: views > 0,
+    type: movieType,
+    trailerUrl: absoluteAsset(row.trailer_url) || undefined,
   };
 }
 
@@ -220,6 +224,15 @@ export async function fetchAnimeById(id: string): Promise<Anime | undefined> {
 
 export async function fetchEpisodesForAnime(animeId: string): Promise<Episode[]> {
   const anime = await fetchAnimeById(animeId);
+  try {
+    const result = await backendFetch<{ data: BackendEpisode[] }>(
+      `/movies/${animeId}/episodes`
+    );
+    if (result.data && result.data.length > 0) {
+      const isPremium = anime?.isPremium ?? false;
+      return result.data.map((ep) => normalizeBackendEpisode(ep, isPremium));
+    }
+  } catch {}
   return anime ? [movieToEpisode(anime)] : getEpisodesForAnime(animeId);
 }
 
@@ -233,6 +246,33 @@ export async function fetchWatchEpisode(animeId: string): Promise<Episode | unde
   };
 }
 
+type BackendEpisode = {
+  episode_id: number | string;
+  video_id: number | string;
+  season_number: number;
+  episode_number: number;
+  title: string;
+  description?: string | null;
+  video_url?: string | null;
+  storage_key?: string | null;
+  thumbnail_url?: string | null;
+  duration_seconds?: number | null;
+};
+
+function normalizeBackendEpisode(row: BackendEpisode, isPremium = false): Episode {
+  const dur = row.duration_seconds ? `${Math.round(row.duration_seconds / 60)} min` : "Full movie";
+  return {
+    id: String(row.episode_id),
+    animeId: String(row.video_id),
+    number: row.episode_number,
+    title: row.title,
+    duration: dur,
+    videoUrl: absoluteAsset(row.video_url || row.storage_key),
+    thumbnailUrl: absoluteAsset(row.thumbnail_url),
+    isPremium,
+  };
+}
+
 export type MoviePayload = {
   title: string;
   description?: string;
@@ -243,6 +283,7 @@ export type MoviePayload = {
   video_url?: string;
   access_level?: "free" | "premium";
   genre_id?: number;
+  type?: "MOVIE" | "SERIES";
 };
 
 export async function createMovie(payload: MoviePayload): Promise<Anime> {

@@ -32,7 +32,7 @@ async function refreshAccessToken() {
 
 export async function apiFetch(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { _retried?: boolean } = {}
 ) {
   const token = getAccessToken();
   const headers = new Headers(options.headers);
@@ -50,13 +50,19 @@ export async function apiFetch(
     }
   );
 
-  if (response.status === 401 && token) {
-    const nextToken = await refreshAccessToken();
-    if (nextToken) {
-      headers.set("Authorization", `Bearer ${nextToken}`);
-      return apiFetch(endpoint, { ...options, headers });
+  if (response.status === 401 && !options._retried) {
+    if (token) {
+      const nextToken = await refreshAccessToken();
+      if (nextToken) {
+        headers.set("Authorization", `Bearer ${nextToken}`);
+        return apiFetch(endpoint, { ...options, headers, _retried: true });
+      }
+      clearAccessToken();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
+      throw new Error("Session expired. Please log in again.");
     }
-    clearAccessToken();
   }
 
   const text = await response.text();

@@ -67,6 +67,7 @@ const selectMovieFields = `
   v.duration_seconds AS duration,
   v.thumbnail_url,
   v.thumbnail_url AS poster_url,
+  v.trailer_url,
   v.video_url,
   v.storage_key,
   v.slug,
@@ -169,6 +170,7 @@ async function createMovie(fields) {
     duration_seconds,
     poster_url,
     thumbnail_url,
+    trailer_url,
     video_url,
     access_level,
     is_premium,
@@ -176,19 +178,23 @@ async function createMovie(fields) {
     type = "MOVIE",
   } = fields;
 
+  // Convert minutes to seconds
+  const durSec = duration_seconds || (duration ? duration * 60 : null);
+
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
     const [result] = await connection.query(
       `INSERT INTO videos
-       (title, description, release_year, duration_seconds, thumbnail_url, video_url, type, is_premium, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+       (title, description, release_year, duration_seconds, thumbnail_url, trailer_url, video_url, type, is_premium, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
       [
         title,
         description || null,
         release_year || null,
-        duration_seconds || duration || null,
+        durSec,
         thumbnail_url || poster_url || null,
+        trailer_url || null,
         normalizeVideoInput(video_url),
         String(type).toUpperCase(),
         is_premium !== undefined ? Boolean(is_premium) : access_level === "premium",
@@ -223,6 +229,7 @@ async function updateMovie(movieId, fields) {
     "release_year",
     "duration_seconds",
     "thumbnail_url",
+    "trailer_url",
     "video_url",
     "type",
     "age_rating",
@@ -231,7 +238,10 @@ async function updateMovie(movieId, fields) {
 
   const normalized = { ...fields };
   for (const [from, to] of Object.entries(aliases)) {
-    if (normalized[from] !== undefined && normalized[to] === undefined) normalized[to] = normalized[from];
+    if (normalized[from] !== undefined && normalized[to] === undefined) {
+      // Convert minutes to seconds when aliasing duration
+      normalized[to] = from === "duration" ? normalized[from] * 60 : normalized[from];
+    }
   }
   if (normalized.access_level !== undefined && normalized.is_premium === undefined) {
     normalized.is_premium = normalized.access_level === "premium";

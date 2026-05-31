@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
+      clearAccessToken();
       const data = await apiFetch("/auth/login", {
         method: "POST",
         body: JSON.stringify({ username: email, password }),

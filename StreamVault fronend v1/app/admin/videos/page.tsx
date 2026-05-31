@@ -11,7 +11,8 @@ import {
   updateMovie,
   type MoviePayload,
 } from "@/lib/catalog";
-import type { Anime, Genre } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
+import type { Anime, Episode, Genre } from "@/lib/types";
 
 type MovieForm = MoviePayload & { id?: string };
 
@@ -24,6 +25,7 @@ const emptyForm: MovieForm = {
   trailer_url: "",
   video_url: "",
   access_level: "free",
+  type: "MOVIE",
 };
 
 export default function AdminVideosPage() {
@@ -32,6 +34,17 @@ export default function AdminVideosPage() {
   const [editing, setEditing] = useState<MovieForm | null>(null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [editingEpisode, setEditingEpisode] = useState<Partial<Episode> | null>(null);
+
+  const loadEpisodes = async (movieId: string) => {
+    try {
+      const result = await apiFetch(`/movies/${movieId}/episodes`);
+      setEpisodes(result.data ?? []);
+    } catch {
+      setEpisodes([]);
+    }
+  };
 
   const loadData = async () => {
     const [movies, genreRows] = await Promise.all([
@@ -82,6 +95,7 @@ export default function AdminVideosPage() {
       video_url: editing.video_url?.trim() || undefined,
       access_level: editing.access_level,
       genre_id: editing.genre_id ? Number(editing.genre_id) : undefined,
+      type: editing.type,
     };
 
     try {
@@ -110,11 +124,17 @@ export default function AdminVideosPage() {
       release_year: anime.year,
       duration: undefined,
       poster_url: anime.posterUrl,
-      trailer_url: "",
+      trailer_url: anime.trailerUrl || "",
       video_url: "",
       access_level: anime.isPremium ? "premium" : "free",
       genre_id: anime.genreIds[0] ? Number(anime.genreIds[0]) : undefined,
+      type: anime.type || "MOVIE",
     });
+    if (anime.type === "SERIES") {
+      loadEpisodes(anime.id);
+    } else {
+      setEpisodes([]);
+    }
   };
 
   return (
@@ -215,6 +235,22 @@ export default function AdminVideosPage() {
               ))}
             </select>
           </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300">
+            Type
+            <select
+              value={editing.type ?? "MOVIE"}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  type: e.target.value as "MOVIE" | "SERIES",
+                })
+              }
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-[var(--sv-orange)] focus:outline-none"
+            >
+              <option value="MOVIE">Movie</option>
+              <option value="SERIES">TV Series</option>
+            </select>
+          </label>
           <Input
             label="Poster URL"
             value={editing.poster_url ?? ""}
@@ -255,6 +291,122 @@ export default function AdminVideosPage() {
               className="resize-none rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-[var(--sv-orange)] focus:outline-none"
             />
           </label>
+          {editing.type === "SERIES" && editing.id && (
+            <div className="sm:col-span-2 mt-4 border-t border-zinc-700 pt-4">
+              <h4 className="mb-3 font-semibold text-white">Episodes</h4>
+              {episodes.length === 0 ? (
+                <p className="mb-3 text-sm text-zinc-500">No episodes yet.</p>
+              ) : (
+                <ul className="mb-3 divide-y divide-zinc-800 rounded-lg border border-zinc-800 text-sm">
+                  {episodes.map((ep) => (
+                    <li key={ep.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-zinc-300">
+                        Ep {ep.number}: {ep.title} — {ep.duration}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-red-400 hover:underline"
+                        onClick={async () => {
+                          if (!confirm("Delete this episode?")) return;
+                          try {
+                            await apiFetch(`/movies/${editing.id}/episodes/${ep.id}`, {
+                              method: "DELETE",
+                            });
+                            loadEpisodes(editing.id!);
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : "Could not delete episode.");
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="grid gap-3 sm:grid-cols-4">
+                <input
+                  placeholder="Episode #"
+                  type="number"
+                  value={editingEpisode?.number ?? ""}
+                  onChange={(e) =>
+                    setEditingEpisode({ ...editingEpisode, number: Number(e.target.value) })
+                  }
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none"
+                />
+                <input
+                  placeholder="Title"
+                  value={editingEpisode?.title ?? ""}
+                  onChange={(e) =>
+                    setEditingEpisode({ ...editingEpisode, title: e.target.value })
+                  }
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
+                />
+                <input
+                  placeholder="Duration (min)"
+                  type="number"
+                  value={
+                    editingEpisode?.duration
+                      ? parseInt(editingEpisode.duration)
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setEditingEpisode({
+                      ...editingEpisode,
+                      duration: e.target.value ? `${e.target.value} min` : "",
+                    })
+                  }
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none"
+                />
+                <input
+                  placeholder="Video URL"
+                  value={editingEpisode?.videoUrl ?? ""}
+                  onChange={(e) =>
+                    setEditingEpisode({ ...editingEpisode, videoUrl: e.target.value })
+                  }
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
+                />
+                <input
+                  placeholder="Thumbnail URL"
+                  value={editingEpisode?.thumbnailUrl ?? ""}
+                  onChange={(e) =>
+                    setEditingEpisode({ ...editingEpisode, thumbnailUrl: e.target.value })
+                  }
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!editingEpisode?.number || !editingEpisode?.title}
+                  onClick={async () => {
+                    if (!editingEpisode?.number || !editingEpisode?.title) return;
+                    setError("");
+                    try {
+                      const dur = editingEpisode.duration
+                        ? parseInt(editingEpisode.duration)
+                        : undefined;
+                      await apiFetch(`/movies/${editing.id}/episodes`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                          episode_number: editingEpisode.number,
+                          title: editingEpisode.title,
+                          video_url: editingEpisode.videoUrl || undefined,
+                          thumbnail_url: editingEpisode.thumbnailUrl || undefined,
+                          duration: dur,
+                        }),
+                      });
+                      setEditingEpisode(null);
+                      loadEpisodes(editing.id!);
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Could not add episode.");
+                    }
+                  }}
+                >
+                  Add episode
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={isSaving}>
               {isSaving ? "Saving..." : "Save"}

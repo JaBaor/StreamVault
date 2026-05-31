@@ -43,6 +43,8 @@ export interface Anime {
   episodeCount: number;
   isPremium: boolean;
   featured?: boolean;
+  type?: "MOVIE" | "SERIES";
+  trailerUrl?: string;
 }
 
 export interface RatingStats {

@@ -17,6 +17,7 @@ router.use("/genres", genreRoutes);
 router.use("/watch-history", watchHistoryRoutes);
 router.use("/watchlist", watchlistRoutes);
 router.use("/movies/:movieId", reviewRoutes);   // ← mergeParams on reviewRoutes handles :movieId
+router.use("/movies/:movieId/episodes", require("./episodeRoutes"));
 router.use("/users", userRoutes);
 router.use("/admin", adminRoutes); 
 router.use("/subscriptions",   subscriptionRoutes);

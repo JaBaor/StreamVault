@@ -3,6 +3,15 @@ const { body, query, param } = require("express-validator");
 const CURRENT_YEAR = new Date().getFullYear();
 const VALID_SORTS  = ["newest", "oldest", "title_asc", "title_desc", "year_desc", "year_asc"];
 
+// Accepts http/https URLs, abyss:CODE, or iframe embed HTML
+function isVideoUrl(value) {
+  if (!value) return true;
+  if (/^https?:\/\//i.test(value)) return true;
+  if (/^abyss:/i.test(value)) return true;
+  if (/^<iframe/i.test(value)) return true;
+  return false;
+}
+
 //GET list
 exports.listMoviesRules = [
   query("page")
@@ -60,11 +69,15 @@ exports.createMovieRules = [
 
   body("trailer_url")
     .optional()
-    .isURL().withMessage("trailer_url must be a valid URL"),
+    .custom(isVideoUrl).withMessage("trailer_url must be a valid URL, abyss: code, or iframe embed"),
 
   body("video_url")
     .optional()
-    .isURL().withMessage("video_url must be a valid URL"),
+    .custom(isVideoUrl).withMessage("video_url must be a valid URL, abyss: code, or iframe embed"),
+
+  body("type")
+    .optional()
+    .isIn(["MOVIE", "SERIES", "movie", "series"]).withMessage("type must be MOVIE or SERIES"),
 
   body("access_level")
     .optional()
@@ -98,11 +111,15 @@ exports.updateMovieRules = [
 
   body("trailer_url")
     .optional()
-    .isURL().withMessage("trailer_url must be a valid URL"),
+    .custom(isVideoUrl).withMessage("trailer_url must be a valid URL, abyss: code, or iframe embed"),
 
   body("video_url")
     .optional()
-    .isURL().withMessage("video_url must be a valid URL"),
+    .custom(isVideoUrl).withMessage("video_url must be a valid URL, abyss: code, or iframe embed"),
+
+  body("type")
+    .optional()
+    .isIn(["MOVIE", "SERIES", "movie", "series"]).withMessage("type must be MOVIE or SERIES"),
 
   body("access_level")
     .optional()
