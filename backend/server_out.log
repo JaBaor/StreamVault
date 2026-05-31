@@ -1,0 +1,14 @@
+◇ injected env (15) from .env // tip: ⌘ suppress logs { quiet: true }
+MySQL connected
+[Cron] Jobs started
+Server running on port5000
+[0mGET /api/v1/movies [32m200[0m 44.697 ms - 2080[0m
+[0mGET /api/v1/movies [32m200[0m 8.740 ms - 2080[0m
+[0mGET /api/v1/movies?genre_id=999 [32m200[0m 8.810 ms - 71[0m
+[0mGET /api/v1/movies?page=1&limit=5&sort=title_asc [32m200[0m 4.423 ms - 2079[0m
+[0mGET /api/v1/movies/trending [32m200[0m 8.838 ms - 556[0m
+[0mGET /api/v1/movies/1 [32m200[0m 4.318 ms - 956[0m
+[0mGET /api/v1/movies/999 [33m404[0m 4.587 ms - 48[0m
+[0mGET /api/v1/movies/trending [32m200[0m 1.522 ms - 556[0m
+[0mGET /api/v1/movies/search?q=angel [32m200[0m 4.463 ms - 1027[0m
+[0mGET /api/v1/movies/search?q= [33m400[0m 0.875 ms - 190[0m
