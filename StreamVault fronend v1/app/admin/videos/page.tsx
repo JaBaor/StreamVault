@@ -11,7 +11,7 @@ import {
   updateMovie,
   type MoviePayload,
 } from "@/lib/catalog";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getAccessToken } from "@/lib/api";
 import type { Anime, Episode, Genre } from "@/lib/types";
 
 type MovieForm = MoviePayload & { id?: string };
@@ -37,6 +37,9 @@ export default function AdminVideosPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [editingEpisode, setEditingEpisode] = useState<Partial<Episode> | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const loadEpisodes = async (movieId: string) => {
     try {
@@ -133,10 +136,48 @@ export default function AdminVideosPage() {
       type: anime.type || "MOVIE",
       airing_status: anime.status === "ongoing" ? "ongoing" : "completed",
     });
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
     if (anime.type === "SERIES") {
       loadEpisodes(anime.id);
     } else {
       setEpisodes([]);
+    }
+  };
+
+  const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setThumbnailFile(file);
+    setThumbnailPreview(URL.createObjectURL(file));
+  };
+
+  const handleUploadThumbnail = async () => {
+    if (!thumbnailFile || !editing?.id) return;
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      form.append("thumbnail", thumbnailFile);
+      form.append("video_id", editing.id);
+      const token = getAccessToken();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/admin/thumbnail`,
+        {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: form,
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Upload failed");
+      setEditing({ ...editing, poster_url: data.url });
+      setThumbnailFile(null);
+      setThumbnailPreview(null);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -275,6 +316,36 @@ export default function AdminVideosPage() {
             value={editing.poster_url ?? ""}
             onChange={(e) => setEditing({ ...editing, poster_url: e.target.value })}
           />
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-zinc-300">Upload Thumbnail</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png"
+              onChange={handleThumbnailSelect}
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-700 file:px-3 file:py-1 file:text-sm file:text-white"
+            />
+            {thumbnailPreview && (
+              <div className="flex items-center gap-3">
+                <img src={thumbnailPreview} alt="Preview" className="h-20 w-36 rounded object-cover" />
+                <button
+                  type="button"
+                  onClick={handleUploadThumbnail}
+                  disabled={isUploading}
+                  className="rounded bg-[var(--sv-orange)] px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {isUploading ? "Uploading..." : "Upload"}
+                </button>
+              </div>
+            )}
+            {editing.poster_url && !thumbnailPreview && (
+              <img
+                src={editing.poster_url}
+                alt="Current"
+                className="h-20 w-36 rounded object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            )}
+          </div>
           <Input
             label="Trailer URL"
             value={editing.trailer_url ?? ""}

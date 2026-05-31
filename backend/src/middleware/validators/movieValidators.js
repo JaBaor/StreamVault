@@ -65,7 +65,11 @@ exports.createMovieRules = [
 
   body("poster_url")
     .optional()
-    .isURL().withMessage("poster_url must be a valid URL"),
+    .custom((value) => {
+      if (!value) return true;
+      if (value.startsWith("/") || /^https?:\/\//i.test(value)) return true;
+      throw new Error("poster_url must be a valid URL or relative path");
+    }),
 
   body("trailer_url")
     .optional()
@@ -111,7 +115,11 @@ exports.updateMovieRules = [
 
   body("poster_url")
     .optional()
-    .isURL().withMessage("poster_url must be a valid URL"),
+    .custom((value) => {
+      if (!value) return true;
+      if (value.startsWith("/") || /^https?:\/\//i.test(value)) return true;
+      throw new Error("poster_url must be a valid URL or relative path");
+    }),
 
   body("trailer_url")
     .optional()

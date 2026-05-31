@@ -1,5 +1,4 @@
 const seriesSubModel = require("../models/seriesSubscriptionModel");
-const emailService = require("../services/emailService");
 const movieModel = require("../models/movieModel");
 const notificationModel = require("../models/notificationModel");
 
@@ -43,7 +42,6 @@ exports.notifySubscribers = async (req, res) => {
         title: `New episode: ${movie.title}`,
         message: episodes[0].title || `Episode ${episodes[0].episode_number}`,
       });
-      await emailService.sendNewEpisodeAlert(sub, movie, episodes[0]);
     })
   );
 

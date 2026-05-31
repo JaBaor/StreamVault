@@ -3,7 +3,6 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const userModel = require("../models/userModel");
-const emailService = require("../services/emailService");
 const notificationModel = require("../models/notificationModel");
 
 const LOG_FILE = path.join(__dirname, "../../oauth-debug.log");
@@ -80,7 +79,6 @@ async function googleCallback(req, res) {
       const userId = await userModel.createUser(displayName, googleUser.email, hashedPassword, "GUEST");
       await userModel.saveOAuthInfo(userId, "google", googleUser.id);
       user = await userModel.getUserByEmail(googleUser.email);
-      emailService.sendWelcomeEmail(user).catch(() => {});
       notificationModel
         .createNotification({
           userId,

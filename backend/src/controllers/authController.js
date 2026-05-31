@@ -18,10 +18,8 @@ exports.register = async(req, res, next)=>{
 
     const userId = await userModel.createUser(username, email, hashedPassword, role);
 
-    // Async: welcome email + notification
-    const emailService = require("../services/emailService");
+    // Async welcome notification
     const notificationModel = require("../models/notificationModel");
-    emailService.sendWelcomeEmail({ email, display_name: username }).catch(() => {});
     notificationModel.createNotification({
       userId, type: "welcome",
       title: "Welcome to StreamVault!",

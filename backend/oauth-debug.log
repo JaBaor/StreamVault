@@ -106,3 +106,33 @@
   "email": "dgbscorpion206@gmail.com",
   "name": "Gia Bảo Dương"
 }
+[2026-05-31T08:49:08.228Z] Step 1: callback called {
+  "redirectUri": "http://localhost:5000/api/v1/auth/google/callback",
+  "hasCode": true,
+  "clientIdPrefix": "5945247860"
+}
+[2026-05-31T08:49:08.387Z] Step 2: token exchange {
+  "status": 200
+}
+[2026-05-31T08:49:08.390Z] Step 3: token response {
+  "hasAccessToken": true
+}
+[2026-05-31T08:49:08.806Z] Step 4: google user info {
+  "email": "dgbscorpion206@gmail.com",
+  "name": "Gia Bảo Dương"
+}
+[2026-05-31T08:51:47.508Z] Step 1: callback called {
+  "redirectUri": "http://localhost:5000/api/v1/auth/google/callback",
+  "hasCode": true,
+  "clientIdPrefix": "5945247860"
+}
+[2026-05-31T08:51:47.631Z] Step 2: token exchange {
+  "status": 200
+}
+[2026-05-31T08:51:47.633Z] Step 3: token response {
+  "hasAccessToken": true
+}
+[2026-05-31T08:51:48.096Z] Step 4: google user info {
+  "email": "dgbscorpion206@gmail.com",
+  "name": "Gia Bảo Dương"
+}

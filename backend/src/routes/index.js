@@ -22,6 +22,8 @@ router.use("/movies/:movieId/episodes", require("./episodeRoutes"));
 router.use("/movies/:movieId/subscriptions", require("./seriesSubscriptionRoutes"));
 router.use("/users", userRoutes);
 router.use("/admin", adminRoutes); 
+router.use("/admin/export", require("./adminExportRoutes"));
+router.use("/admin", require("./adminThumbnailRoutes"));
 router.use("/subscriptions",   subscriptionRoutes);
 router.use("/notifications", require("./notificationRoutes"));
 

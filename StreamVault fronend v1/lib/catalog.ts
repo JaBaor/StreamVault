@@ -3,7 +3,7 @@ import {
   episodes as baseEpisodes,
   genres as baseGenres,
 } from "./mock-data";
-import { API_URL, apiFetch } from "./api";
+import { API_URL, apiFetch, getAccessToken } from "./api";
 import { getItem, setItem } from "./storage";
 import type { Anime, Episode, Genre, RatingStats, Review } from "./types";
 
@@ -476,4 +476,25 @@ export async function cancelSubscription(): Promise<{
   subscription: SubscriptionStatus;
 }> {
   return apiFetch("/subscriptions", { method: "DELETE" });
+}
+
+export function downloadCSV(endpoint: string, filename: string) {
+  const token = getAccessToken();
+  fetch(`${API_URL}${endpoint}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
+  })
+    .then((r) => {
+      if (!r.ok) throw new Error("Export failed");
+      return r.blob();
+    })
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    })
+    .catch((err) => console.error("CSV export error:", err));
 }

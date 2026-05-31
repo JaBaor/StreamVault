@@ -21,6 +21,7 @@ import {
   fetchSignupStats,
   fetchTopMovies,
   fetchSubscriptionPlanStats,
+  downloadCSV,
   type AdminStats,
 } from "@/lib/catalog";
 
@@ -83,6 +84,21 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {error && <p className="text-sm text-red-400">{error}</p>}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => downloadCSV("/admin/export/users", "users.csv")}
+          className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+        >
+          Export Users CSV
+        </button>
+        <button
+          onClick={() => downloadCSV("/admin/export/videos", "videos.csv")}
+          className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+        >
+          Export Videos CSV
+        </button>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Users" value={values.totalUsers} />

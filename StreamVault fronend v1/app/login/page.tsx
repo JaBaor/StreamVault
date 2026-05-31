@@ -20,11 +20,14 @@ function LoginForm() {
 
   // Handle Google OAuth redirect with token or errors
   useEffect(() => {
-    const token = params.get("token");
+    const paramsObj = new URLSearchParams(window.location.search);
+    const token = paramsObj.get("token") || params.get("token");
     if (token) {
+      console.log("[OAuth] Token received from URL, saving...");
       setAccessToken(token);
       apiFetch("/users/me")
         .then((data) => {
+          console.log("[OAuth] User fetched:", data.email);
           const role = String(data.role ?? "").toLowerCase();
           const userObj = {
             id: String(data.id),
@@ -34,13 +37,18 @@ function LoginForm() {
             subscriptionPlan: role === "subscriber" || role === "admin" ? "premium" : "free",
           };
           setItem("user", userObj);
+          console.log("[OAuth] User saved to localStorage:", userObj.displayName);
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.error("[OAuth] Failed to fetch user:", err);
+        })
         .finally(() => {
-          window.location.href = params.get("redirect") ?? "/";
+          console.log("[OAuth] Redirecting to home...");
+          window.location.href = paramsObj.get("redirect") ?? "/";
         });
       return;
     }
+
     const err = params.get("error");
     if (err === "oauth_failed") setError("Google login failed. Check server logs.");
     else if (err === "google_denied") setError("Google login was cancelled.");

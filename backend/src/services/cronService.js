@@ -1,6 +1,5 @@
 const cron = require("node-cron");
 const pool = require("../config/db");
-const emailService = require("./emailService");
 const notificationModel = require("../models/notificationModel");
 
 const GRACE_PERIOD_DAYS = 3;
@@ -41,7 +40,6 @@ function startCronJobs() {
             title: "Subscription Expiring Soon",
             message: `Your subscription expires in ${daysLeft} day(s).`,
           });
-          await emailService.sendExpiryReminder(row, daysLeft);
         }
       }
     } catch (err) {
