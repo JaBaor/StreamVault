@@ -30,7 +30,15 @@ async function main() {
 
   const server = http.createServer((req, res) => {
     if (req.url.startsWith("/api/v1") || req.url.startsWith("/uploads")) {
-      apiApp(req, res);
+      apiApp(req, res, (err) => {
+        if (err) {
+          console.error("[server] Express error:", err.message);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.end("Internal Server Error");
+          }
+        }
+      });
     } else {
       req.headers.host = req.headers.host || "localhost";
       handle(req, res);
