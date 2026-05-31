@@ -1,8 +1,11 @@
-const http = require("http");
 const path = require("path");
+const express = require("express");
 const next = require("next");
 
 require("./backend/src/config/env");
+
+process.on("uncaughtException", (err) => console.error("[server] Uncaught exception:", err));
+process.on("unhandledRejection", (err) => console.error("[server] Unhandled rejection:", err));
 
 const dev = process.env.NODE_ENV !== "production";
 const PORT = process.env.PORT || 3000;
@@ -16,36 +19,23 @@ async function main() {
   await nextApp.prepare();
   console.log("[server] Next.js ready");
 
-  const express = require("express");
-  const apiApp = express();
+  const app = express();
 
-  apiApp.use(require("cors")(require("./backend/src/config/corsOptions")));
-  apiApp.use(express.json());
-  apiApp.use(require("morgan")("dev"));
-  apiApp.use(require("cookie-parser")());
+  app.use(require("cors")(require("./backend/src/config/corsOptions")));
+  app.use(express.json());
+  app.use(require("morgan")("dev"));
+  app.use(require("cookie-parser")());
 
-  apiApp.use("/uploads", express.static(path.join(__dirname, "backend/public/uploads")));
-  apiApp.use("/api/v1", require("./backend/src/routes/index"));
-  apiApp.use(require("./backend/src/middleware/errorHandler"));
+  app.use("/uploads", express.static(path.join(__dirname, "backend/public/uploads")));
+  app.use("/api/v1", require("./backend/src/routes/index"));
+  app.use(require("./backend/src/middleware/errorHandler"));
 
-  const server = http.createServer((req, res) => {
-    if (req.url.startsWith("/api/v1") || req.url.startsWith("/uploads")) {
-      apiApp(req, res, (err) => {
-        if (err) {
-          console.error("[server] Express error:", err.message);
-          if (!res.headersSent) {
-            res.statusCode = 500;
-            res.end("Internal Server Error");
-          }
-        }
-      });
-    } else {
-      req.headers.host = req.headers.host || "localhost";
-      handle(req, res);
-    }
+  app.use((req, res) => {
+    req.headers.host = req.headers.host || "localhost";
+    handle(req, res);
   });
 
-  server.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`[server] Listening on port ${PORT}`);
   });
 }
