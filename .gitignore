@@ -1,6 +1,4 @@
 node_modules
 .env.local
-schema.sql
-seed.sql
 .codegraph
 .evn.example
