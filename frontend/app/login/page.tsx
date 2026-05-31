@@ -2,27 +2,49 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, setAccessToken } from "@/lib/api";
 import { setItem } from "@/lib/storage";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  oauth_failed: "Google login failed. Check server logs.",
+  google_denied: "Google login was cancelled.",
+  token_exchange_failed: "Google login failed: token exchange error",
+  no_email: "Google account has no email. Try a different account.",
+  oauth_not_configured: "Google OAuth not configured by admin.",
+};
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Handle Google OAuth redirect with token or errors
+  const errorParam = params.get("error");
+  const detailsParam = params.get("details");
+  const urlError = useMemo(() => {
+    if (!errorParam) return "";
+    if (errorParam === "token_exchange_failed" && detailsParam) {
+      return `Google login failed: ${detailsParam}`;
+    }
+    return ERROR_MESSAGES[errorParam] || "";
+  }, [errorParam, detailsParam]);
+
+  const tokenHandled = useRef(false);
+
+  // Handle Google OAuth redirect with token
   useEffect(() => {
+    if (tokenHandled.current) return;
     const paramsObj = new URLSearchParams(window.location.search);
     const token = paramsObj.get("token") || params.get("token");
     if (token) {
+      tokenHandled.current = true;
       console.log("[OAuth] Token received from URL, saving...");
       setAccessToken(token);
       apiFetch("/users/me")
@@ -46,15 +68,7 @@ function LoginForm() {
           console.log("[OAuth] Redirecting to home...");
           window.location.href = paramsObj.get("redirect") ?? "/";
         });
-      return;
     }
-
-    const err = params.get("error");
-    if (err === "oauth_failed") setError("Google login failed. Check server logs.");
-    else if (err === "google_denied") setError("Google login was cancelled.");
-    else if (err === "token_exchange_failed") setError(`Google login failed: ${params.get("details") || "token exchange error"}`);
-    else if (err === "no_email") setError("Google account has no email. Try a different account.");
-    else if (err === "oauth_not_configured") setError("Google OAuth not configured by admin.");
   }, [params]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +111,7 @@ function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {(error || urlError) && <p className="text-sm text-red-400">{error || urlError}</p>}
         <Button type="submit" fullWidth disabled={loading}>
           {loading ? "Signing in…" : "Log in"}
         </Button>

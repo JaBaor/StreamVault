@@ -3,3 +3,4 @@ node_modules
 schema.sql
 seed.sql
 .codegraph
+.evn.example

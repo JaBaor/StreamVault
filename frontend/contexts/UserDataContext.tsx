@@ -42,37 +42,17 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Load notifications from backend
-  const loadNotifications = useCallback(async () => {
-    if (!uid) return;
-    try {
-      const result = await apiFetch("/notifications?limit=50", { _silent: true });
-      const items: Notification[] = (result.data ?? []).map((n: { id: number; title: string; message: string; is_read: number; created_at: string }) => ({
-        id: String(n.id),
-        title: n.title,
-        message: n.message ?? "",
-        read: Boolean(n.is_read),
-        createdAt: n.created_at,
-      }));
-      setNotifications(items);
-      setItem(storageKey(uid, "notifications"), items);
-
-      const uc = await apiFetch("/notifications/unread-count", { _silent: true });
-      setUnreadCount(uc.count ?? 0);
-    } catch {
-      const cached = getItem<Notification[]>(storageKey(uid, "notifications"), []);
-      setNotifications(cached);
-    }
-  }, [uid]);
-
   useEffect(() => {
+    let cancelled = false;
     queueMicrotask(() => {
+      if (cancelled) return;
       setWatchlist(canUseWatchlist ? getItem(storageKey(uid, "watchlist"), []) : []);
       setHistory(getItem(storageKey(uid, "history"), []));
     });
     if (uid && canUseWatchlist) {
-      void apiFetch("/watchlist?limit=100", { _silent: true })
+      apiFetch("/watchlist?limit=100", { _silent: true })
         .then((result) => {
+          if (cancelled) return;
           const ids = (result.data ?? []).map((movie: { movie_id: number | string }) =>
             String(movie.movie_id)
           );
@@ -80,8 +60,9 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
           setItem(storageKey(uid, "watchlist"), ids);
         })
         .catch(() => undefined);
-      void apiFetch("/watch-history?limit=100", { _silent: true })
+      apiFetch("/watch-history?limit=100", { _silent: true })
         .then((result) => {
+          if (cancelled) return;
           const items = (result.data ?? []).map(
             (row: { movie_id: number | string; progress_seconds?: number; watched_at?: string }) => ({
               animeId: String(row.movie_id),
@@ -95,8 +76,35 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(() => undefined);
     }
-    void loadNotifications();
-  }, [uid, canUseWatchlist, loadNotifications]);
+    if (uid) {
+      apiFetch("/notifications?limit=50", { _silent: true })
+        .then((result) => {
+          if (cancelled) return;
+          const items: Notification[] = (result.data ?? []).map(
+            (n: { id: number; title: string; message: string; is_read: number; created_at: string }) => ({
+              id: String(n.id),
+              title: n.title,
+              message: n.message ?? "",
+              read: Boolean(n.is_read),
+              createdAt: n.created_at,
+            })
+          );
+          setNotifications(items);
+          setItem(storageKey(uid, "notifications"), items);
+          return apiFetch("/notifications/unread-count", { _silent: true });
+        })
+        .then((uc) => {
+          if (cancelled || !uc) return;
+          setUnreadCount(uc.count ?? 0);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          const cached = getItem<Notification[]>(storageKey(uid, "notifications"), []);
+          setNotifications(cached);
+        });
+    }
+    return () => { cancelled = true; };
+  }, [uid, canUseWatchlist]);
 
   const persistWatchlist = useCallback(
     (next: string[]) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -43,29 +43,30 @@ export default function AdminDashboardPage() {
   const [period, setPeriod] = useState("week");
   const [error, setError] = useState("");
 
-  const loadData = useCallback(async () => {
-    try {
-      const [s, sg, tm, ps] = await Promise.all([
-        fetchAdminStats(),
-        period === "custom"
-          ? fetchSignupStats("custom", dateRange.from, dateRange.to)
-          : fetchSignupStats(period),
-        fetchTopMovies(10),
-        fetchSubscriptionPlanStats(),
-      ]);
-      setStats(s);
-      setSignups(sg);
-      setTopMovies(tm);
-      setPlanStats(ps);
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load dashboard data.");
-    }
-  }, [period, dateRange]);
-
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    let cancelled = false;
+    Promise.all([
+      fetchAdminStats(),
+      period === "custom"
+        ? fetchSignupStats("custom", dateRange.from, dateRange.to)
+        : fetchSignupStats(period),
+      fetchTopMovies(10),
+      fetchSubscriptionPlanStats(),
+    ])
+      .then(([s, sg, tm, ps]) => {
+        if (cancelled) return;
+        setStats(s);
+        setSignups(sg);
+        setTopMovies(tm);
+        setPlanStats(ps);
+        setError("");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Could not load dashboard data.");
+      });
+    return () => { cancelled = true; };
+  }, [period, dateRange]);
 
   const values = stats ?? { totalUsers: 0, totalMovies: 0, totalGenres: 0, viewsToday: 0 };
 
