@@ -13,8 +13,6 @@ const PORT = process.env.PORT || 3000;
 async function main() {
   console.log(`[server] Starting in ${dev ? "development" : "production"} mode on port ${PORT}`);
 
-  await require("./backend/src/config/initDb")().catch(() => {});
-
   const nextApp = next({ dev, dir: path.join(__dirname, "frontend") });
   const handle = nextApp.getRequestHandler();
 
