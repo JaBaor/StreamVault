@@ -123,7 +123,7 @@ export default function AdminVideosPage() {
       description: anime.description,
       release_year: anime.year,
       duration: undefined,
-      poster_url: anime.posterUrl,
+      poster_url: anime._rawPosterUrl || "",
       trailer_url: anime.trailerUrl || "",
       video_url: "",
       access_level: anime.isPremium ? "premium" : "free",

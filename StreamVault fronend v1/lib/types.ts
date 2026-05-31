@@ -45,6 +45,7 @@ export interface Anime {
   featured?: boolean;
   type?: "MOVIE" | "SERIES";
   trailerUrl?: string;
+  _rawPosterUrl?: string | null;
 }
 
 export interface RatingStats {

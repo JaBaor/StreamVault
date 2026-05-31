@@ -88,6 +88,7 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
     title: row.title,
     description: row.description || "No description available.",
     posterUrl: absoluteAsset(row.poster_url),
+    _rawPosterUrl: row.poster_url,
     bannerUrl: absoluteAsset(row.banner_url || row.poster_url),
     rating: Math.max(0, Math.min(10, Number((views / 1000 + 7).toFixed(1)))),
     year: Number(row.release_year) || new Date().getFullYear(),
@@ -244,10 +245,23 @@ export async function fetchEpisodesForAnime(animeId: string): Promise<Episode[]>
   return anime ? [movieToEpisode(anime)] : getEpisodesForAnime(animeId);
 }
 
-export async function fetchWatchEpisode(animeId: string): Promise<Episode | undefined> {
-  const movie = await apiFetch(`/movies/${animeId}/watch`);
+export async function fetchWatchEpisode(
+  animeId: string,
+  episodeId?: string
+): Promise<Episode | undefined> {
   const anime = await fetchAnimeById(animeId);
   if (!anime) return undefined;
+
+  if (episodeId && episodeId !== "full") {
+    const ep = await backendFetch<BackendEpisode>(
+      `/movies/${animeId}/episodes/${episodeId}`
+    );
+    if (ep) {
+      return { ...normalizeBackendEpisode(ep, anime.isPremium), animeId };
+    }
+  }
+
+  const movie = await apiFetch(`/movies/${animeId}/watch`);
   return {
     ...movieToEpisode(anime),
     videoUrl: absoluteAsset(movie.videoUrl),

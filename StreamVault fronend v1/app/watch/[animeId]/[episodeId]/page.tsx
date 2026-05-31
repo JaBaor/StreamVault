@@ -71,7 +71,7 @@ export default function WatchPage() {
         const publicEpisode = nextEpisodes.find((ep) => ep.id === episodeId);
         if (publicEpisode) {
           try {
-            const playable = await fetchWatchEpisode(animeId);
+            const playable = await fetchWatchEpisode(animeId, episodeId);
             if (active && playable) setPlayableEpisode(playable);
           } catch {
             if (active) setAccessReason(user ? "premium" : "login");
