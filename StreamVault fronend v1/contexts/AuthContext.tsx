@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { apiFetch, clearAccessToken, setAccessToken } from "@/lib/api";
+import { hasPremiumAccess } from "@/lib/access";
 import { getItem, removeItem, setItem } from "@/lib/storage";
 import type { User, UserRole } from "@/lib/types";
 
@@ -46,7 +47,7 @@ function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
     email: user.email ?? fallbackEmail,
     displayName: user.username ?? user.email ?? fallbackEmail,
     role,
-    subscriptionPlan: role === "admin" ? "premium" : "free",
+    subscriptionPlan: role === "subscriber" || role === "admin" ? "premium" : "free",
   };
 }
 
@@ -137,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       updateProfile,
-      isSubscriber: role === "member" || role === "subscriber" || role === "admin",
+      isSubscriber: hasPremiumAccess(user),
       isAdmin: role === "admin",
     }),
     [user, role, isLoading, login, register, logout, updateProfile]

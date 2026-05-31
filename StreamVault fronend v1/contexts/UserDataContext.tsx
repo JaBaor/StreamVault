@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { apiFetch } from "@/lib/api";
+import { hasPremiumAccess } from "@/lib/access";
 import { getItem, setItem } from "@/lib/storage";
 import type { Notification, WatchHistoryItem } from "@/lib/types";
 import { useAuth } from "./AuthContext";
@@ -50,6 +51,7 @@ function storageKey(userId: string | null, key: string) {
 export function UserDataProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const uid = user?.id ?? null;
+  const canUseWatchlist = hasPremiumAccess(user);
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [history, setHistory] = useState<WatchHistoryItem[]>([]);
@@ -57,13 +59,13 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setWatchlist(getItem(storageKey(uid, "watchlist"), []));
+      setWatchlist(canUseWatchlist ? getItem(storageKey(uid, "watchlist"), []) : []);
       setHistory(getItem(storageKey(uid, "history"), []));
       if (uid) {
         setNotifications(getItem(storageKey(uid, "notifications"), DEFAULT_NOTIFICATIONS));
       }
     });
-    if (uid) {
+    if (uid && canUseWatchlist) {
       void apiFetch("/watchlist?limit=100")
         .then((result) => {
           const ids = (result.data ?? []).map((movie: { movie_id: number | string }) =>
@@ -93,25 +95,26 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(() => undefined);
     }
-  }, [uid]);
+  }, [uid, canUseWatchlist]);
 
   const persistWatchlist = useCallback(
     (next: string[]) => {
       setWatchlist(next);
-      if (uid) setItem(storageKey(uid, "watchlist"), next);
+      if (uid && canUseWatchlist) setItem(storageKey(uid, "watchlist"), next);
     },
-    [uid]
+    [uid, canUseWatchlist]
   );
 
   const toggleWatchlist = useCallback(
     (animeId: string) => {
+      if (!canUseWatchlist) return;
       const inList = watchlist.includes(animeId);
       persistWatchlist(
         inList
           ? watchlist.filter((id) => id !== animeId)
           : [...watchlist, animeId]
       );
-      if (uid) {
+      if (uid && canUseWatchlist) {
         void apiFetch(`/watchlist/${animeId}`, {
           method: inList ? "DELETE" : "POST",
         }).catch(() => {
@@ -119,7 +122,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [watchlist, persistWatchlist, uid]
+    [watchlist, persistWatchlist, uid, canUseWatchlist]
   );
 
   const isInWatchlist = useCallback(

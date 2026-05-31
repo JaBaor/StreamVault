@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/contexts/UserDataContext";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { hasPremiumAccess } from "@/lib/access";
 import type { Anime, Episode, RatingStats, Review } from "@/lib/types";
 
 export function AnimeDetailClient({
@@ -20,9 +21,10 @@ export function AnimeDetailClient({
   anime: Anime;
   episodes: Episode[];
 }) {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const { isInWatchlist, toggleWatchlist } = useUserData();
   const inList = isInWatchlist(anime.id);
+  const canUseWatchlist = hasPremiumAccess(user);
   const canReview = role === "member" || role === "subscriber" || role === "admin";
   const [ratingStats, setRatingStats] = useState<RatingStats>({ average: null, count: 0 });
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -69,13 +71,22 @@ export function AnimeDetailClient({
       <section className="mt-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-xl font-bold text-white">Episodes</h2>
-          <Button
-            variant={inList ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => toggleWatchlist(anime.id)}
-          >
-            {inList ? "In watchlist" : "Add to watchlist"}
-          </Button>
+          {canUseWatchlist ? (
+            <Button
+              variant={inList ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => toggleWatchlist(anime.id)}
+            >
+              {inList ? "In watchlist" : "Add to watchlist"}
+            </Button>
+          ) : (
+            <Link
+              href="/dashboard/subscription"
+              className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-sm font-semibold text-amber-300 transition-colors hover:bg-amber-500/10"
+            >
+              Premium watchlist
+            </Link>
+          )}
         </div>
         <ul className="mt-4 divide-y divide-zinc-800 rounded-xl border border-zinc-800">
           {episodes.map((ep, i) => (
