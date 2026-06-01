@@ -11,7 +11,7 @@ import {
   updateMovie,
   type MoviePayload,
 } from "@/lib/catalog";
-import { apiFetch, getAccessToken } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { Anime, Episode, Genre } from "@/lib/types";
 
 type MovieForm = MoviePayload & { id?: string };
@@ -37,8 +37,7 @@ export default function AdminVideosPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [editingEpisode, setEditingEpisode] = useState<Partial<Episode> | null>(null);
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbnailData, setThumbnailData] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const loadEpisodes = async (movieId: string) => {
@@ -136,8 +135,7 @@ export default function AdminVideosPage() {
       type: anime.type || "MOVIE",
       airing_status: anime.status === "ongoing" ? "ongoing" : "completed",
     });
-    setThumbnailFile(null);
-    setThumbnailPreview(null);
+    setThumbnailData(null);
     if (anime.type === "SERIES") {
       loadEpisodes(anime.id);
     } else {
@@ -148,31 +146,21 @@ export default function AdminVideosPage() {
   const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setThumbnailFile(file);
-    setThumbnailPreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = () => setThumbnailData(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleUploadThumbnail = async () => {
-    if (!thumbnailFile || !editing?.id) return;
+    if (!thumbnailData || !editing?.id) return;
     setIsUploading(true);
     try {
-      const form = new FormData();
-      form.append("thumbnail", thumbnailFile);
-      form.append("video_id", editing.id);
-      const token = getAccessToken();
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/admin/thumbnail`,
-        {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: form,
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Upload failed");
+      const data = await apiFetch("/admin/thumbnail", {
+        method: "POST",
+        body: JSON.stringify({ image: thumbnailData, video_id: editing.id }),
+      });
       setEditing({ ...editing, poster_url: data.url });
-      setThumbnailFile(null);
-      setThumbnailPreview(null);
+      setThumbnailData(null);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -324,9 +312,9 @@ export default function AdminVideosPage() {
               onChange={handleThumbnailSelect}
               className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-700 file:px-3 file:py-1 file:text-sm file:text-white"
             />
-            {thumbnailPreview && (
+            {thumbnailData && (
               <div className="flex items-center gap-3">
-                <img src={thumbnailPreview} alt="Preview" className="h-20 w-36 rounded object-cover" />
+                <img src={thumbnailData} alt="Preview" className="h-20 w-36 rounded object-cover" />
                 <button
                   type="button"
                   onClick={handleUploadThumbnail}
@@ -337,7 +325,7 @@ export default function AdminVideosPage() {
                 </button>
               </div>
             )}
-            {editing.poster_url && !thumbnailPreview && (
+            {editing.poster_url && !thumbnailData && (
               <img
                 src={editing.poster_url}
                 alt="Current"
@@ -453,14 +441,6 @@ export default function AdminVideosPage() {
                   value={editingEpisode?.videoUrl ?? ""}
                   onChange={(e) =>
                     setEditingEpisode({ ...editingEpisode, videoUrl: e.target.value })
-                  }
-                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
-                />
-                <input
-                  placeholder="Thumbnail URL"
-                  value={editingEpisode?.thumbnailUrl ?? ""}
-                  onChange={(e) =>
-                    setEditingEpisode({ ...editingEpisode, thumbnailUrl: e.target.value })
                   }
                   className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
                 />

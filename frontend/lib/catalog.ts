@@ -52,7 +52,7 @@ function absoluteAsset(url?: string | null) {
   if (abyss) return abyss;
   const gdrive = normalizeGoogleDriveUrl(url);
   if (gdrive) return gdrive;
-  if (/^https?:\/\//i.test(url) || url.startsWith("/")) return url;
+  if (/^https?:\/\//i.test(url) || url.startsWith("/") || url.startsWith("data:")) return url;
   const base = API_URL.replace(/\/api\/v1$/, "");
   return `${base}/${url.replace(/^\/+/, "")}`;
 }

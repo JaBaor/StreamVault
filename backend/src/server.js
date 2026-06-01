@@ -14,6 +14,9 @@ async function startServer(){
     await connection.query("ALTER TABLE users MODIFY COLUMN avatar_url LONGTEXT").catch(() => {});
     console.log("Migration: avatar_url column widened");
 
+    await connection.query("ALTER TABLE videos MODIFY COLUMN thumbnail_url LONGTEXT").catch(() => {});
+    console.log("Migration: thumbnail_url column widened");
+
     connection.release();
 
     startCronJobs();

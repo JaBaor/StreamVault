@@ -45,16 +45,3 @@ exports.changePassword = async (req, res) => {
   res.json({ message: "Password updated successfully" });
 };
 
-// POST /api/v1/users/me/avatar 
-exports.uploadAvatar = async (req, res) => {
-  if (!req.file) {
-    throw new BadRequestError("No image file provided");
-  }
-
-  // Build the public URL path — this is what gets stored in the DB
-  // and returned to the frontend to display the image
-  const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-  const updated = await userModel.updateProfile(req.user.id, { avatar_url: avatarUrl });
-  res.json({ message: "Avatar updated", avatarUrl, user: updated });
-};

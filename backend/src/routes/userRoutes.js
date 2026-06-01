@@ -3,7 +3,7 @@ const router      = express.Router();
 const ctrl        = require("../controllers/userController");
 const verifyToken = require("../middleware/verifyToken");
 const validate    = require("../middleware/validate");
-const { uploadAvatar } = require("../middleware/upload");
+
 const {
   updateProfileRules,
   changePasswordRules,
@@ -16,8 +16,6 @@ router.get(  "/me",          ctrl.getMe);
 router.put(  "/me",          updateProfileRules,  validate, ctrl.updateMe);
 router.put(  "/me/password", changePasswordRules, validate, ctrl.changePassword);
 
-// Avatar upload: multer runs first (reads the file), then the controller
 
-router.post( "/me/avatar",   uploadAvatar, ctrl.uploadAvatar);
 
 module.exports = router;

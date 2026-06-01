@@ -68,7 +68,7 @@ exports.createMovieRules = [
     .optional()
     .custom((value) => {
       if (!value) return true;
-      if (value.startsWith("/") || /^https?:\/\//i.test(value)) return true;
+      if (value.startsWith("/") || /^https?:\/\//i.test(value) || value.startsWith("data:image/")) return true;
       throw new Error("poster_url must be a valid URL or relative path");
     }),
 
@@ -118,7 +118,7 @@ exports.updateMovieRules = [
     .optional()
     .custom((value) => {
       if (!value) return true;
-      if (value.startsWith("/") || /^https?:\/\//i.test(value)) return true;
+      if (value.startsWith("/") || /^https?:\/\//i.test(value) || value.startsWith("data:image/")) return true;
       throw new Error("poster_url must be a valid URL or relative path");
     }),
 
