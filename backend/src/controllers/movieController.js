@@ -106,6 +106,15 @@ exports.watchMovie = async (req, res) => {
   });
 };
 
+// GET /api/v1/movies/:id/seasons
+exports.getSeasons = async (req, res) => {
+  const movie = await movieModel.getMovieById(req.params.id);
+  if (!movie) throw new NotFoundError("Movie");
+  if (!movie.series_group_id) return res.json([]);
+  const seasons = await movieModel.getSeasonsByGroup(movie.series_group_id);
+  res.json(seasons);
+};
+
 // ── GET /api/v1/movies/trending 
 exports.getTrending = async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 50);
