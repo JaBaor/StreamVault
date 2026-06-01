@@ -14,9 +14,13 @@ exports.getMe = async (req, res) => {
 
 //PUT /api/v1/users/me 
 exports.updateMe = async (req, res) => {
-  const updated = await userModel.updateProfile(req.user.id, req.body);
+  const fields = { ...req.body };
+  if (fields.displayName !== undefined) {
+    fields.display_name = fields.displayName;
+    delete fields.displayName;
+  }
+  const updated = await userModel.updateProfile(req.user.id, fields);
   res.json(updated);
-  // ER_DUP_ENTRY (duplicate username/email) is caught by errorHandler automatically
 };
 
 //PUT /api/v1/users/me/password 

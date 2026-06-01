@@ -119,9 +119,17 @@ export function Header() {
                 href="/profile"
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-800"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-white">
-                  {user.displayName.charAt(0).toUpperCase()}
-                </span>
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-white">
+                    {user.displayName.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </Link>
             </>
           ) : (

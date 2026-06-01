@@ -43,6 +43,14 @@ export function HeroBanner({ anime }: { anime: Anime }) {
           <span className="capitalize">{anime.status}</span>
           <span>·</span>
           <span>{anime.episodeCount} episodes</span>
+          {anime.isPremium && (
+            <>
+              <span>·</span>
+              <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-400 border border-amber-500/40">
+                Premium
+              </span>
+            </>
+          )}
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           {firstEp && (

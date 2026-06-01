@@ -11,6 +11,9 @@ async function startServer(){
 
     console.log("MySQL connected");
     
+    await connection.query("ALTER TABLE users MODIFY COLUMN avatar_url LONGTEXT").catch(() => {});
+    console.log("Migration: avatar_url column widened");
+
     connection.release();
 
     startCronJobs();

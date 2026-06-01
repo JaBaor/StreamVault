@@ -25,7 +25,7 @@ interface AuthContextValue {
     displayName: string
   ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
-  updateProfile: (data: Partial<User>) => void;
+  updateProfile: (data: Partial<User>) => Promise<{ ok: boolean; error?: string }>;
   isSubscriber: boolean;
   isAdmin: boolean;
 }
@@ -37,6 +37,7 @@ type BackendUser = {
   username?: string;
   email?: string;
   role?: "member" | "subscriber" | "admin" | string;
+  avatar_url?: string | null;
 };
 
 function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
@@ -47,6 +48,7 @@ function mapBackendUser(user: BackendUser, fallbackEmail = ""): User {
     id: String(user.id),
     email: user.email ?? fallbackEmail,
     displayName: user.username ?? user.email ?? fallbackEmail,
+    avatarUrl: user.avatar_url || undefined,
     role,
     subscriptionPlan: role === "subscriber" || role === "admin" ? "premium" : "free",
   };
@@ -125,19 +127,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     removeItem("user");
   }, []);
 
-  const updateProfile = useCallback((data: Partial<User>) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, ...data };
-      setItem("user", next);
-      const users = getItem<User[]>("registered-users", []);
-      const idx = users.findIndex((u) => u.id === next.id);
-      if (idx >= 0) {
-        users[idx] = next;
-        setItem("registered-users", users);
+  const updateProfile = useCallback(async (data: Partial<User>) => {
+    try {
+      const payload: Record<string, string> = {};
+      if (data.displayName) payload.display_name = data.displayName;
+      if (data.avatarUrl) payload.avatar_url = data.avatarUrl;
+      if (Object.keys(payload).length > 0) {
+        await apiFetch("/users/me", {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
       }
-      return next;
-    });
+      setUser((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, ...data };
+        setItem("user", next);
+        const users = getItem<User[]>("registered-users", []);
+        const idx = users.findIndex((u) => u.id === next.id);
+        if (idx >= 0) {
+          users[idx] = next;
+          setItem("registered-users", users);
+        }
+        return next;
+      });
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Update failed",
+      };
+    }
   }, []);
 
   const role: UserRole = user?.role ?? "guest";

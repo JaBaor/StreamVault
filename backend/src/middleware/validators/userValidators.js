@@ -2,17 +2,25 @@
 const { body } = require("express-validator");
 
 exports.updateProfileRules = [
-  body("username")
+  body("display_name")
     .optional()
     .trim()
-    .isLength({ min: 3, max: 50 }).withMessage("Username must be 3–50 characters")
-    .matches(/^[a-zA-Z0-9_]+$/).withMessage("Username can only contain letters, numbers, underscores"),
+    .isLength({ min: 1, max: 100 }).withMessage("Display name must be 1–100 characters"),
 
   body("email")
     .optional()
     .trim()
     .isEmail().withMessage("Must be a valid email address")
     .normalizeEmail(),
+
+  body("avatar_url")
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      if (value.startsWith("data:image/")) return true;
+      if (value.startsWith("/") || /^https?:\/\//i.test(value)) return true;
+      throw new Error("avatar_url must be a data URL, relative path, or http/https URL");
+    }),
 ];
 
 exports.changePasswordRules = [
