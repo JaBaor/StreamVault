@@ -78,9 +78,6 @@ const selectMovieFields = `
   v.age_rating,
   v.is_premium,
   CASE WHEN v.is_premium THEN 'premium' ELSE 'free' END AS access_level,
-  v.series_group_id,
-  v.season_number,
-  sg.title AS series_group,
   v.created_at,
   MIN(vg.genre_id) AS genre_id,
   GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
@@ -124,7 +121,6 @@ async function getMovieById(movieId) {
      FROM videos v
      LEFT JOIN video_genres vg ON v.id = vg.video_id
      LEFT JOIN genres g ON vg.genre_id = g.id
-     LEFT JOIN series_groups sg ON v.series_group_id = sg.id
      WHERE v.id = ? AND v.status = 'ACTIVE'
      GROUP BY v.id`,
     [movieId]
@@ -178,9 +174,6 @@ async function createMovie(fields) {
     trailer_url,
     video_url,
     access_level,
-    series_group,
-    series_group_id,
-    season_number,
     is_premium,
     genre_id,
     type = "MOVIE",
@@ -192,21 +185,10 @@ async function createMovie(fields) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    let resolvedGroupId = series_group_id;
-    if (series_group && !resolvedGroupId) {
-      const [existing] = await connection.query("SELECT id FROM series_groups WHERE title = ?", [series_group]);
-      if (existing.length > 0) {
-        resolvedGroupId = existing[0].id;
-      } else {
-        const [groupResult] = await connection.query("INSERT INTO series_groups (title) VALUES (?)", [series_group]);
-        resolvedGroupId = groupResult.insertId;
-      }
-    }
-
     const [result] = await connection.query(
       `INSERT INTO videos
-       (title, description, release_year, duration_seconds, thumbnail_url, trailer_url, video_url, type, airing_status, is_premium, status, series_group_id, season_number)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
+       (title, description, release_year, duration_seconds, thumbnail_url, trailer_url, video_url, type, airing_status, is_premium, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
       [
         title,
         description || null,
@@ -218,8 +200,6 @@ async function createMovie(fields) {
         String(type).toUpperCase(),
         fields.airing_status || "completed",
         is_premium !== undefined ? Boolean(is_premium) : access_level === "premium",
-        resolvedGroupId || null,
-        season_number || null,
       ]
     );
 
@@ -257,8 +237,6 @@ async function updateMovie(movieId, fields) {
     "airing_status",
     "age_rating",
     "is_premium",
-    "series_group_id",
-    "season_number",
   ];
 
   const normalized = { ...fields };
@@ -274,12 +252,6 @@ async function updateMovie(movieId, fields) {
   if (normalized.video_url !== undefined) {
     normalized.video_url = normalizeVideoInput(normalized.video_url);
   }
-
-  if (normalized.series_group) {
-    const [existing] = await pool.query("SELECT id FROM series_groups WHERE title = ?", [normalized.series_group]);
-    normalized.series_group_id = existing.length > 0 ? existing[0].id : (await pool.query("INSERT INTO series_groups (title) VALUES (?)", [normalized.series_group]))[0].insertId;
-  }
-  delete normalized.series_group;
 
   const setClauses = [];
   const params = [];
@@ -331,22 +303,6 @@ async function incrementViewCount(movieId) {
   await pool.query("UPDATE videos SET view_count = view_count + 1 WHERE id = ?", [movieId]);
 }
 
-async function getSeasonsByGroup(seriesGroupId) {
-  if (!seriesGroupId) return [];
-  const [rows] = await pool.query(
-    `SELECT ${selectMovieFields}
-     FROM videos v
-     LEFT JOIN video_genres vg ON v.id = vg.video_id
-     LEFT JOIN genres g ON vg.genre_id = g.id
-     LEFT JOIN series_groups sg ON v.series_group_id = sg.id
-     WHERE v.series_group_id = ? AND v.status = 'ACTIVE'
-     GROUP BY v.id
-     ORDER BY v.season_number ASC`,
-    [seriesGroupId]
-  );
-  return rows.map(mapMovie);
-}
-
 module.exports = {
   getAllMovies,
   getMovieById,
@@ -356,5 +312,4 @@ module.exports = {
   softDeleteMovie,
   incrementViewCount,
   mapMovie,
-  getSeasonsByGroup,
 };

@@ -46,9 +46,6 @@ export interface Anime {
   type?: "MOVIE" | "SERIES";
   trailerUrl?: string;
   _rawPosterUrl?: string | null;
-  seriesGroup?: string | null;
-  seriesGroupId?: number | null;
-  seasonNumber?: number | null;
 }
 
 export interface RatingStats {

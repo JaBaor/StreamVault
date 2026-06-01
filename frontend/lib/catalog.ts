@@ -24,9 +24,6 @@ type BackendMovie = {
   access_level?: string | null;
   type?: string | null;
   airing_status?: string | null;
-  series_group?: string | null;
-  series_group_id?: number | null;
-  season_number?: number | null;
 };
 
 type BackendGenre = {
@@ -103,9 +100,6 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
     featured: views > 0,
     type: movieType,
     trailerUrl: absoluteAsset(row.trailer_url) || undefined,
-    seriesGroup: row.series_group || null,
-    seriesGroupId: row.series_group_id || null,
-    seasonNumber: row.season_number || null,
   };
 }
 
@@ -314,8 +308,6 @@ export type MoviePayload = {
   genre_id?: number;
   type?: "MOVIE" | "SERIES";
   airing_status?: "ongoing" | "completed";
-  series_group?: string;
-  season_number?: number;
 };
 
 export async function createMovie(payload: MoviePayload): Promise<Anime> {
@@ -336,11 +328,6 @@ export async function updateMovie(id: string, payload: Partial<MoviePayload>): P
 
 export async function deleteMovie(id: string): Promise<void> {
   await apiFetch(`/movies/${id}`, { method: "DELETE" });
-}
-
-export async function fetchSeasons(movieId: string): Promise<Anime[]> {
-  const seasons = await apiFetch(`/movies/${movieId}/seasons`);
-  return (seasons as BackendMovie[]).map(normalizeBackendMovie);
 }
 
 export async function fetchRatingStats(movieId: string): Promise<RatingStats> {

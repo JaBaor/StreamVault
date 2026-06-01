@@ -95,15 +95,6 @@ exports.createMovieRules = [
   body("genre_id")
     .optional()
     .isInt({ min: 1 }).withMessage("genre_id must be a positive integer"),
-
-  body("series_group")
-    .optional()
-    .trim()
-    .isLength({ max: 255 }).withMessage("series_group cannot exceed 255 characters"),
-
-  body("season_number")
-    .optional()
-    .isInt({ min: 1 }).withMessage("season_number must be a positive integer"),
 ];
 
 // PUT update 
@@ -154,15 +145,6 @@ exports.updateMovieRules = [
   body("genre_id")
     .optional()
     .isInt({ min: 1 }).withMessage("genre_id must be a positive integer"),
-
-  body("series_group")
-    .optional()
-    .trim()
-    .isLength({ max: 255 }).withMessage("series_group cannot exceed 255 characters"),
-
-  body("season_number")
-    .optional()
-    .isInt({ min: 1 }).withMessage("season_number must be a positive integer"),
 ];
 
 // GET search

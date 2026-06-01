@@ -5,7 +5,6 @@ import {
   fetchAnimeBySlug,
   fetchCatalogGenres,
   fetchEpisodesForAnime,
-  fetchSeasons,
 } from "@/lib/catalog";
 
 export default async function AnimeDetailPage({
@@ -17,39 +16,15 @@ export default async function AnimeDetailPage({
   const anime = await fetchAnimeBySlug(slug);
   if (!anime) notFound();
 
-  const [eps, genres, seasons] = await Promise.all([
+  const [eps, genres] = await Promise.all([
     fetchEpisodesForAnime(anime.id),
     fetchCatalogGenres(),
-    anime.seriesGroupId ? fetchSeasons(anime.id) : Promise.resolve([]),
   ]);
   const animeGenres = genres.filter((g) => anime.genreIds.includes(g.id));
   const firstEp = eps[0];
 
   return (
     <div className="pb-12">
-      {seasons.length > 1 && (
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 pt-4 sm:px-6 lg:px-8">
-          <span className="text-sm text-zinc-400">Seasons:</span>
-          <div className="flex flex-wrap gap-2">
-            {seasons.map((s) => {
-              const isCurrent = s.id === anime.id;
-              return (
-                <Link
-                  key={s.id}
-                  href={`/anime/${s.slug}`}
-                  className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-                    isCurrent
-                      ? "bg-[var(--sv-orange)] text-white"
-                      : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  }`}
-                >
-                  {s.seasonNumber ? `Season ${s.seasonNumber}` : s.title}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
       <div className="relative h-[40vh] min-h-[240px] max-h-[480px] w-full overflow-hidden sm:h-[50vh]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

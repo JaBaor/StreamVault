@@ -14,7 +14,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import type { Anime, Episode, Genre } from "@/lib/types";
 
-type MovieForm = MoviePayload & { id?: string; series_group?: string; season_number?: number };
+type MovieForm = MoviePayload & { id?: string };
 
 const emptyForm: MovieForm = {
   title: "",
@@ -27,8 +27,6 @@ const emptyForm: MovieForm = {
   access_level: "free",
   type: "MOVIE",
   airing_status: "completed",
-  series_group: "",
-  season_number: undefined,
 };
 
 export default function AdminVideosPage() {
@@ -102,8 +100,6 @@ export default function AdminVideosPage() {
       genre_id: editing.genre_id ? Number(editing.genre_id) : undefined,
       type: editing.type,
       airing_status: editing.airing_status,
-      series_group: editing.series_group?.trim() || undefined,
-      season_number: editing.season_number || undefined,
     };
 
     try {
@@ -138,8 +134,6 @@ export default function AdminVideosPage() {
       genre_id: anime.genreIds[0] ? Number(anime.genreIds[0]) : undefined,
       type: anime.type || "MOVIE",
       airing_status: anime.status === "ongoing" ? "ongoing" : "completed",
-      series_group: anime.seriesGroup || "",
-      season_number: anime.seasonNumber || undefined,
     });
     setThumbnailData(null);
     if (anime.type === "SERIES") {
@@ -305,24 +299,6 @@ export default function AdminVideosPage() {
               <option value="ongoing">Ongoing</option>
             </select>
           </label>
-          {editing.type === "SERIES" && (
-            <>
-              <Input
-                label="Series Group"
-                value={editing.series_group ?? ""}
-                onChange={(e) => setEditing({ ...editing, series_group: e.target.value })}
-                placeholder="e.g. Attack on Titan"
-              />
-              <Input
-                label="Season Number"
-                type="number"
-                value={editing.season_number ?? ""}
-                onChange={(e) =>
-                  setEditing({ ...editing, season_number: Number(e.target.value) || undefined })
-                }
-              />
-            </>
-          )}
           <Input
             label="Poster URL"
             value={editing.poster_url ?? ""}

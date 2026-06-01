@@ -32,5 +32,4 @@ router.get("/:id/watch",
   optionalAuth,
   movieController.watchMovie
 );
-router.get("/:id/seasons", movieIdParam, validate, movieController.getSeasons);
 module.exports = router;
