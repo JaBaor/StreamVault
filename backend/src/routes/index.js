@@ -10,10 +10,6 @@ const reviewRoutes       = require("./reviewRoutes");
 const userRoutes         = require("./userRoutes");
 const adminRoutes        = require("./adminRoutes");
 const subscriptionRoutes = require("./subscriptionRoutes");
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
 router.use("/auth", authRoutes);
 router.use("/auth", require("./oauthRoutes"));
 router.use("/movies", movieRoutes);
