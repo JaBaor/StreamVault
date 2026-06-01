@@ -381,23 +381,40 @@ export default function AdminVideosPage() {
                       <span className="text-zinc-300">
                         Ep {ep.number}: {ep.title} — {ep.duration}
                       </span>
-                      <button
-                        type="button"
-                        className="text-red-400 hover:underline"
-                        onClick={async () => {
-                          if (!confirm("Delete this episode?")) return;
-                          try {
-                            await apiFetch(`/movies/${editing.id}/episodes/${ep.id}`, {
-                              method: "DELETE",
-                            });
-                            loadEpisodes(editing.id!);
-                          } catch (err) {
-                            setError(err instanceof Error ? err.message : "Could not delete episode.");
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="text-[var(--sv-orange)] hover:underline"
+                          onClick={() =>
+                            setEditingEpisode({
+                              id: ep.id,
+                              number: ep.number,
+                              title: ep.title,
+                              duration: ep.duration,
+                              videoUrl: ep.videoUrl,
+                            })
                           }
-                        }}
-                      >
-                        Delete
-                      </button>
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="text-red-400 hover:underline"
+                          onClick={async () => {
+                            if (!confirm("Delete this episode?")) return;
+                            try {
+                              await apiFetch(`/movies/${editing.id}/episodes/${ep.id}`, {
+                                method: "DELETE",
+                              });
+                              loadEpisodes(editing.id!);
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Could not delete episode.");
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -455,25 +472,38 @@ export default function AdminVideosPage() {
                       const dur = editingEpisode.duration
                         ? parseInt(editingEpisode.duration)
                         : undefined;
-                      await apiFetch(`/movies/${editing.id}/episodes`, {
-                        method: "POST",
-                        body: JSON.stringify({
-                          episode_number: editingEpisode.number,
-                          title: editingEpisode.title,
-                          video_url: editingEpisode.videoUrl || undefined,
-                          thumbnail_url: editingEpisode.thumbnailUrl || undefined,
-                          duration: dur,
-                        }),
-                      });
+                      const isUpdate = !!editingEpisode.id;
+                      const body = {
+                        episode_number: editingEpisode.number,
+                        title: editingEpisode.title,
+                        video_url: editingEpisode.videoUrl || undefined,
+                        duration: dur,
+                      };
+                      if (isUpdate) {
+                        await apiFetch(
+                          `/movies/${editing.id}/episodes/${editingEpisode.id}`,
+                          { method: "PUT", body: JSON.stringify(body) }
+                        );
+                      } else {
+                        await apiFetch(`/movies/${editing.id}/episodes`, {
+                          method: "POST",
+                          body: JSON.stringify(body),
+                        });
+                      }
                       setEditingEpisode(null);
                       loadEpisodes(editing.id!);
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : "Could not add episode.");
+                      setError(err instanceof Error ? err.message : "Could not save episode.");
                     }
                   }}
                 >
-                  Add episode
+                  {editingEpisode?.id ? "Update" : "Add episode"}
                 </Button>
+                {editingEpisode?.id && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditingEpisode(null)}>
+                    Cancel
+                  </Button>
+                )}
               </div>
             </div>
           )}
