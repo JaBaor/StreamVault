@@ -30,8 +30,8 @@ export function Footer() {
           <div>
             <p className="text-sm font-semibold text-zinc-300">Demo accounts</p>
             <ul className="mt-2 space-y-1 text-xs text-zinc-500">
-              <li>user@streamvault.dev / user123</li>
-              <li>admin@streamvault.dev / admin123</li>
+              <li>user@streamvault.dev / User123!</li>
+              <li>admin@streamify.com / Admin123!</li>
             </ul>
           </div>
         </div>

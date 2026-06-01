@@ -3,12 +3,13 @@ const { body, query, param } = require("express-validator");
 const CURRENT_YEAR = new Date().getFullYear();
 const VALID_SORTS  = ["newest", "oldest", "title_asc", "title_desc", "year_desc", "year_asc"];
 
-// Accepts http/https URLs, abyss:CODE, or iframe embed HTML
+// Accepts http/https URLs, abyss:CODE, iframe embed HTML, or relative paths
 function isVideoUrl(value) {
   if (!value) return true;
   if (/^https?:\/\//i.test(value)) return true;
   if (/^abyss:/i.test(value)) return true;
   if (/^<iframe/i.test(value)) return true;
+  if (value.startsWith("/")) return true;
   return false;
 }
 
