@@ -1,9 +1,9 @@
 {
   "name": "wad-project",
   "private": true,
-  "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "start": "node server.js"
+ "scripts": {
+    "start": "node index.js",
+    "dev":   "nodemon index.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
