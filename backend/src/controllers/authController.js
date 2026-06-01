@@ -70,8 +70,8 @@ exports.login = async (req, res, next)=>{
     //    Send ACCESS token in JSON body so client can use it in headers
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     res.json({message:"Login successful", accessToken,
@@ -138,8 +138,8 @@ exports.logout = async (req, res, next)=>{
     // 3. Clear the cookie on the client side too
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "none",
     });
 
     res.json({message:"Logged out successfully"});
