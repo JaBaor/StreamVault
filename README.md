@@ -43,7 +43,7 @@ StreamVault is a streaming platform for anime and movies with admin management, 
 
 ## Authors
 
-- **Atomyst & JaBaor** — [GitHub](https://github.com/Atomyst)
+- **Atomyst & JaBaor** — [GitHub - Atomyst](https://github.com/Atomyst) [GitHub - JaBaor](https://github.com/JaBaor)
 
 ## Run Locally
 
