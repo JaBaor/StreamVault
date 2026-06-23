@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/contexts/UserDataContext";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { TrailerPlayer } from "@/components/video/TrailerPlayer";
 import { hasPremiumAccess } from "@/lib/access";
 import type { Anime, Episode, RatingStats, Review } from "@/lib/types";
 
@@ -68,6 +69,23 @@ export function AnimeDetailClient({
 
   return (
     <>
+      {anime.trailerUrl && (
+        <section id="trailer" className="mt-10 scroll-mt-24">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold text-white">Trailer</h2>
+            <a
+              href={anime.trailerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-zinc-400 transition-colors hover:text-[var(--sv-orange)]"
+            >
+              Open source
+            </a>
+          </div>
+          <TrailerPlayer url={anime.trailerUrl} title={anime.title} />
+        </section>
+      )}
+
       <section className="mt-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-xl font-bold text-white">Episodes</h2>

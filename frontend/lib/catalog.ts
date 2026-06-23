@@ -47,6 +47,11 @@ function normalizeGoogleDriveUrl(url: string) {
   return null;
 }
 
+function extractIframeSrc(value: string) {
+  const match = value.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  return match?.[1] ?? value;
+}
+
 function absoluteAsset(url?: string | null) {
   if (!url) return "/window.svg";
   const abyss = normalizeAbyssUrl(url);
@@ -56,6 +61,16 @@ function absoluteAsset(url?: string | null) {
   if (/^https?:\/\//i.test(url) || url.startsWith("/") || url.startsWith("data:")) return url;
   const base = API_URL.replace(/\/api\/v1$/, "");
   return `${base}/${url.replace(/^\/+/, "")}`;
+}
+
+function absoluteVideoAsset(url?: string | null) {
+  if (!url) return undefined;
+  const src = extractIframeSrc(url.trim());
+  const abyss = normalizeAbyssUrl(src);
+  if (abyss) return abyss;
+  if (/^https?:\/\//i.test(src) || src.startsWith("/") || src.startsWith("data:")) return src;
+  const base = API_URL.replace(/\/api\/v1$/, "");
+  return `${base}/${src.replace(/^\/+/, "")}`;
 }
 
 function normalizeAbyssUrl(value?: string | null) {
@@ -104,7 +119,7 @@ function normalizeBackendMovie(row: BackendMovie): Anime {
     isPremium: row.access_level === "premium" || row.access_level === "subscription",
     featured: views > 0,
     type: movieType,
-    trailerUrl: absoluteAsset(row.trailer_url) || undefined,
+    trailerUrl: absoluteVideoAsset(row.trailer_url),
   };
 }
 

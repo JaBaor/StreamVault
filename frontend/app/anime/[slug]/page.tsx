@@ -68,13 +68,25 @@ export default async function AnimeDetailPage({
                 </Link>
               ))}
             </div>
-            {firstEp && (
-              <Link
-                href={`/watch/${anime.id}/${firstEp.id}`}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--sv-orange)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--sv-orange-hover)]"
-              >
-                ▶ Watch now
-              </Link>
+            {(firstEp || anime.trailerUrl) && (
+              <div className="mt-4 flex flex-wrap gap-3">
+                {firstEp && (
+                  <Link
+                    href={`/watch/${anime.id}/${firstEp.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--sv-orange)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--sv-orange-hover)]"
+                  >
+                    Watch now
+                  </Link>
+                )}
+                {anime.trailerUrl && (
+                  <a
+                    href="#trailer"
+                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-500 px-6 py-2.5 text-sm font-semibold text-zinc-100 transition-colors hover:border-[var(--sv-orange)] hover:text-[var(--sv-orange)]"
+                  >
+                    Watch trailer
+                  </a>
+                )}
+              </div>
             )}
           </div>
         </div>

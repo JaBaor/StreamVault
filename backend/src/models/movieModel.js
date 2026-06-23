@@ -197,7 +197,7 @@ async function createMovie(fields) {
         release_year || null,
         durSec,
         thumbnail_url || poster_url || null,
-        trailer_url || null,
+        normalizeVideoInput(trailer_url),
         normalizeVideoInput(video_url),
         String(type).toUpperCase(),
         fields.airing_status || "completed",
@@ -254,6 +254,9 @@ async function updateMovie(movieId, fields) {
   }
   if (normalized.video_url !== undefined) {
     normalized.video_url = normalizeVideoInput(normalized.video_url);
+  }
+  if (normalized.trailer_url !== undefined) {
+    normalized.trailer_url = normalizeVideoInput(normalized.trailer_url);
   }
 
   const setClauses = [];

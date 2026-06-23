@@ -55,7 +55,14 @@ export function HeroBanner({ anime }: { anime: Anime }) {
         <div className="mt-6 flex flex-wrap gap-3">
           {firstEp && (
             <Link href={`/watch/${anime.id}/${firstEp.id}`}>
-              <Button size="lg">▶ Watch now</Button>
+              <Button size="lg">Watch now</Button>
+            </Link>
+          )}
+          {anime.trailerUrl && (
+            <Link href={`/anime/${anime.slug}#trailer`}>
+              <Button variant="secondary" size="lg">
+                Trailer
+              </Button>
             </Link>
           )}
           <Link href={`/anime/${anime.slug}`}>
