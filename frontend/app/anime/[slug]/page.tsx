@@ -92,7 +92,12 @@ export default async function AnimeDetailPage({
         </div>
       </div>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="mt-6 max-w-3xl leading-relaxed text-zinc-300">{anime.description}</p>
+        <div className="mt-8 max-w-3xl rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">Synopsis</h2>
+          <p className="leading-relaxed text-zinc-300 first-letter:text-2xl first-letter:font-bold first-letter:text-white">
+            {anime.description}
+          </p>
+        </div>
         <AnimeDetailClient anime={anime} episodes={eps} />
       </div>
     </div>
