@@ -26,6 +26,7 @@ export interface Episode {
   videoUrl: string;
   thumbnailUrl: string;
   isPremium: boolean;
+  description?: string;
 }
 
 export interface Anime {

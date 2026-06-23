@@ -392,6 +392,7 @@ export default function AdminVideosPage() {
                               title: ep.title,
                               duration: ep.duration,
                               videoUrl: ep.videoUrl,
+                              description: ep.description,
                             })
                           }
                         >
@@ -461,6 +462,15 @@ export default function AdminVideosPage() {
                   }
                   className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
                 />
+                <textarea
+                  placeholder="Description"
+                  value={editingEpisode?.description ?? ""}
+                  onChange={(e) =>
+                    setEditingEpisode({ ...editingEpisode, description: e.target.value })
+                  }
+                  rows={3}
+                  className="resize-none rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder:text-zinc-500 focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-4"
+                />
                 <Button
                   type="button"
                   size="sm"
@@ -476,6 +486,7 @@ export default function AdminVideosPage() {
                       const body = {
                         episode_number: editingEpisode.number,
                         title: editingEpisode.title,
+                        description: editingEpisode.description || undefined,
                         video_url: editingEpisode.videoUrl || undefined,
                         duration: dur,
                       };

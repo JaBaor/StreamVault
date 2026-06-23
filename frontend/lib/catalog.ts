@@ -293,6 +293,7 @@ function normalizeBackendEpisode(row: BackendEpisode, isPremium = false): Episod
     videoUrl: absoluteAsset(row.video_url || row.storage_key),
     thumbnailUrl: absoluteAsset(row.thumbnail_url),
     isPremium,
+    description: row.description || undefined,
   };
 }
 
