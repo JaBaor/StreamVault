@@ -20,6 +20,7 @@ type BackendMovie = {
   storage_key?: string | null;
   view_count?: number | string | null;
   genre_id?: number | string | null;
+  genre_ids?: string | null;
   genre_name?: string | null;
   access_level?: string | null;
   type?: string | null;
@@ -80,7 +81,11 @@ function normalizeBackendGenre(row: BackendGenre): Genre {
 
 function normalizeBackendMovie(row: BackendMovie): Anime {
   const id = String(row.movie_id);
-  const genreIds = row.genre_id ? [String(row.genre_id)] : [];
+  const genreIds = row.genre_ids
+    ? row.genre_ids.split(",").filter(Boolean).map((x) => x.trim())
+    : row.genre_id
+      ? [String(row.genre_id)]
+      : [];
   const views = Number(row.view_count ?? 0);
   const movieType = row.type?.toUpperCase() === "SERIES" ? "SERIES" : "MOVIE";
   return {
@@ -306,6 +311,7 @@ export type MoviePayload = {
   trailer_url?: string;
   video_url?: string;
   access_level?: "free" | "premium";
+  genre_ids?: number[];
   genre_id?: number;
   type?: "MOVIE" | "SERIES";
   airing_status?: "ongoing" | "completed";

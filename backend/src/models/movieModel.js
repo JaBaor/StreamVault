@@ -27,13 +27,15 @@ function normalizeVideoInput(value) {
   return trimmed;
 }
 
-function buildMovieFilters({ genre_id, release_year, status = "ACTIVE" }) {
+function buildMovieFilters({ genre_id, genre_ids, release_year, status = "ACTIVE" }) {
   const conditions = ["v.status = ?"];
   const params = [normalizeStatus(status)];
 
-  if (genre_id) {
-    conditions.push("EXISTS (SELECT 1 FROM video_genres vgf WHERE vgf.video_id = v.id AND vgf.genre_id = ?)");
-    params.push(Number(genre_id));
+  const gids = genre_ids || (genre_id ? [genre_id] : []);
+  if (gids.length > 0) {
+    const placeholders = gids.map(() => "?").join(",");
+    conditions.push(`EXISTS (SELECT 1 FROM video_genres vgf WHERE vgf.video_id = v.id AND vgf.genre_id IN (${placeholders}))`);
+    params.push(...gids.map(Number));
   }
 
   if (release_year) {
@@ -79,8 +81,8 @@ const selectMovieFields = `
   v.is_premium,
   CASE WHEN v.is_premium THEN 'premium' ELSE 'free' END AS access_level,
   v.created_at,
-  MIN(vg.genre_id) AS genre_id,
-  GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
+  GROUP_CONCAT(DISTINCT vg.genre_id ORDER BY vg.genre_id) AS genre_ids,
+  GROUP_CONCAT(DISTINCT g.name ORDER BY vg.genre_id SEPARATOR ', ') AS genre_name
 `;
 
 async function getAllMovies({ page = 1, limit = 10, genre_id, release_year, sort }) {
@@ -175,7 +177,7 @@ async function createMovie(fields) {
     video_url,
     access_level,
     is_premium,
-    genre_id,
+    genre_ids,
     type = "MOVIE",
   } = fields;
 
@@ -203,10 +205,11 @@ async function createMovie(fields) {
       ]
     );
 
-    if (genre_id) {
+    const gids = Array.isArray(genre_ids) ? genre_ids : (fields.genre_id ? [fields.genre_id] : []);
+    for (const gid of gids) {
       await connection.query(
         "INSERT IGNORE INTO video_genres (video_id, genre_id) VALUES (?, ?)",
-        [result.insertId, Number(genre_id)]
+        [result.insertId, Number(gid)]
       );
     }
 
@@ -271,12 +274,13 @@ async function updateMovie(movieId, fields) {
         [...params, movieId]
       );
     }
-    if (fields.genre_id !== undefined) {
+    if (fields.genre_ids !== undefined || fields.genre_id !== undefined) {
       await connection.query("DELETE FROM video_genres WHERE video_id = ?", [movieId]);
-      if (fields.genre_id) {
+      const gids = Array.isArray(fields.genre_ids) ? fields.genre_ids : (fields.genre_id ? [fields.genre_id] : []);
+      for (const gid of gids) {
         await connection.query(
           "INSERT IGNORE INTO video_genres (video_id, genre_id) VALUES (?, ?)",
-          [movieId, Number(fields.genre_id)]
+          [movieId, Number(gid)]
         );
       }
     }

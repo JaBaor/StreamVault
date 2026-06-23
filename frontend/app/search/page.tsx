@@ -59,18 +59,33 @@ function SearchContent() {
           onChange={(e) => setQuery(e.target.value)}
           className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none lg:col-span-2"
         />
-        <select
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white"
-        >
-          <option value="">All genres</option>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setGenre("")}
+            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+              !genre
+                ? "border-[var(--sv-orange)] bg-[var(--sv-orange)]/10 text-[var(--sv-orange)]"
+                : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+            }`}
+          >
+            All
+          </button>
           {genreList.map((g) => (
-            <option key={g.id} value={g.slug}>
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => setGenre(genre === g.slug ? "" : g.slug)}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                genre === g.slug
+                  ? "border-[var(--sv-orange)] bg-[var(--sv-orange)]/10 text-[var(--sv-orange)]"
+                  : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+              }`}
+            >
               {g.name}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as typeof status)}

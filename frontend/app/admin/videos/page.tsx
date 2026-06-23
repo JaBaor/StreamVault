@@ -25,6 +25,7 @@ const emptyForm: MovieForm = {
   trailer_url: "",
   video_url: "",
   access_level: "free",
+  genre_ids: [],
   type: "MOVIE",
   airing_status: "completed",
 };
@@ -98,7 +99,7 @@ export default function AdminVideosPage() {
       trailer_url: editing.trailer_url?.trim() || undefined,
       video_url: editing.video_url?.trim() || undefined,
       access_level: editing.access_level,
-      genre_id: editing.genre_id ? Number(editing.genre_id) : undefined,
+      genre_ids: editing.genre_ids?.length ? editing.genre_ids : undefined,
       type: editing.type,
       airing_status: editing.airing_status,
     };
@@ -132,7 +133,7 @@ export default function AdminVideosPage() {
       trailer_url: anime.trailerUrl && anime.trailerUrl !== "/window.svg" ? anime.trailerUrl : "",
       video_url: "",
       access_level: anime.isPremium ? "premium" : "free",
-      genre_id: anime.genreIds[0] ? Number(anime.genreIds[0]) : undefined,
+      genre_ids: anime.genreIds.map(Number).filter((n) => !isNaN(n)),
       type: anime.type || "MOVIE",
       airing_status: anime.status === "ongoing" ? "ongoing" : "completed",
     });
@@ -199,7 +200,7 @@ export default function AdminVideosPage() {
               <tr key={`${a.id}:${a.slug}:${i}`} className="border-t border-zinc-800">
                 <td className="px-4 py-3 text-white">{a.title}</td>
                 <td className="px-4 py-3">{a.year}</td>
-                <td className="px-4 py-3">{genreById.get(a.genreIds[0]) ?? "Unassigned"}</td>
+                <td className="px-4 py-3">{a.genreIds.map((gid) => genreById.get(gid)).filter(Boolean).join(", ") || "Unassigned"}</td>
                 <td className="px-4 py-3">{a.isPremium ? "Premium" : "Free"}</td>
                 <td className="px-4 py-3">
                   <button
@@ -252,23 +253,40 @@ export default function AdminVideosPage() {
               setEditing({ ...editing, duration: Number(e.target.value) || undefined })
             }
           />
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300">
-            Genre
-            <select
-              value={editing.genre_id ?? ""}
-              onChange={(e) =>
-                setEditing({ ...editing, genre_id: Number(e.target.value) || undefined })
-              }
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-[var(--sv-orange)] focus:outline-none"
-            >
-              <option value="">Unassigned</option>
-              {genres.map((genre, i) => (
-                <option key={`${genre.id}:${i}`} value={genre.id}>
-                  {genre.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300">
+            <legend>Genres</legend>
+            <div className="flex flex-wrap gap-2">
+              {genres.map((genre) => {
+                const checked = editing.genre_ids?.includes(Number(genre.id));
+                return (
+                  <label
+                    key={genre.id}
+                    className={`cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors ${
+                      checked
+                        ? "border-[var(--sv-orange)] bg-[var(--sv-orange)]/10 text-[var(--sv-orange)]"
+                        : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={!!checked}
+                      onChange={() => {
+                        const id = Number(genre.id);
+                        setEditing({
+                          ...editing,
+                          genre_ids: checked
+                            ? (editing.genre_ids ?? []).filter((g) => g !== id)
+                            : [...(editing.genre_ids ?? []), id],
+                        });
+                      }}
+                    />
+                    {genre.name}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300">
             Type
             <select

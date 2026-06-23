@@ -92,6 +92,12 @@ exports.createMovieRules = [
     .optional()
     .isIn(["free", "premium"]).withMessage("access_level must be free or premium"),
 
+  body("genre_ids")
+    .optional()
+    .isArray({ min: 1 }).withMessage("genre_ids must be a non-empty array"),
+  body("genre_ids.*")
+    .optional()
+    .isInt({ min: 1 }).withMessage("each genre_id must be a positive integer"),
   body("genre_id")
     .optional()
     .isInt({ min: 1 }).withMessage("genre_id must be a positive integer"),
@@ -142,6 +148,12 @@ exports.updateMovieRules = [
     .optional()
     .isIn(["free", "premium"]).withMessage("access_level must be free or premium"),
 
+  body("genre_ids")
+    .optional()
+    .isArray({ min: 1 }).withMessage("genre_ids must be a non-empty array"),
+  body("genre_ids.*")
+    .optional()
+    .isInt({ min: 1 }).withMessage("each genre_id must be a positive integer"),
   body("genre_id")
     .optional()
     .isInt({ min: 1 }).withMessage("genre_id must be a positive integer"),

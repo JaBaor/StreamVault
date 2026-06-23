@@ -112,8 +112,8 @@ exports.getTrending = async (req, res) => {
 
   const [rows] = await require("../config/db").query(
     `SELECT v.id AS movie_id, v.title, v.release_year, v.thumbnail_url AS poster_url, v.view_count,
-            MIN(vg.genre_id) AS genre_id,
-            GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name,
+            GROUP_CONCAT(DISTINCT vg.genre_id ORDER BY vg.genre_id) AS genre_ids,
+            GROUP_CONCAT(DISTINCT g.name ORDER BY vg.genre_id SEPARATOR ', ') AS genre_name,
             COUNT(DISTINCT wh.id) AS views_last_7_days
      FROM videos v
      LEFT JOIN video_genres vg ON v.id = vg.video_id
@@ -155,8 +155,8 @@ exports.getRecommendations = async (req, res) => {
   
     [movies] = await pool.query(
       `SELECT v.id AS movie_id, v.title, v.release_year, v.thumbnail_url AS poster_url, v.view_count,
-              MIN(vg.genre_id) AS genre_id,
-              GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
+              GROUP_CONCAT(DISTINCT vg.genre_id ORDER BY vg.genre_id) AS genre_ids,
+              GROUP_CONCAT(DISTINCT g.name ORDER BY vg.genre_id SEPARATOR ', ') AS genre_name
        FROM videos v
        LEFT JOIN video_genres vg ON v.id = vg.video_id
        LEFT JOIN genres g ON vg.genre_id = g.id
@@ -174,8 +174,8 @@ exports.getRecommendations = async (req, res) => {
   
     [movies] = await pool.query(
       `SELECT v.id AS movie_id, v.title, v.release_year, v.thumbnail_url AS poster_url, v.view_count,
-              MIN(vg.genre_id) AS genre_id,
-              GROUP_CONCAT(DISTINCT g.name SEPARATOR ', ') AS genre_name
+              GROUP_CONCAT(DISTINCT vg.genre_id ORDER BY vg.genre_id) AS genre_ids,
+              GROUP_CONCAT(DISTINCT g.name ORDER BY vg.genre_id SEPARATOR ', ') AS genre_name
        FROM videos v
        LEFT JOIN video_genres vg ON v.id = vg.video_id
        LEFT JOIN genres g ON vg.genre_id = g.id
