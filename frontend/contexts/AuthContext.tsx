@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, clearAccessToken, setAccessToken } from "@/lib/api";
+import { apiFetch, clearAccessToken, getAccessToken, setAccessToken } from "@/lib/api";
 import { hasPremiumAccess } from "@/lib/access";
 import { getItem, removeItem, setItem } from "@/lib/storage";
 import type { User, UserRole } from "@/lib/types";
@@ -60,10 +60,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setUser(getItem<User | null>("user", null));
+    async function init() {
+      const token = getAccessToken();
+      if (token) {
+        try {
+          const data = await apiFetch("/users/me");
+          const nextUser = mapBackendUser(data);
+          setUser(nextUser);
+          setItem("user", nextUser);
+        } catch {
+          clearAccessToken();
+          removeItem("user");
+          setUser(null);
+        }
+      } else {
+        setUser(getItem<User | null>("user", null));
+      }
       setIsLoading(false);
-    });
+    }
+    init();
     const onSessionExpired = () => {
       clearAccessToken();
       setUser(null);

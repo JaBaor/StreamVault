@@ -85,13 +85,14 @@ export default function SubscriptionPage() {
         )}
         <div className="mt-6 flex flex-wrap gap-3">
           <Button
+            variant={status?.plan === "premium_monthly" ? "primary" : "secondary"}
             onClick={() => changePlan("premium_monthly")}
             disabled={isSaving || status?.plan === "premium_monthly"}
           >
             Premium monthly
           </Button>
           <Button
-            variant="secondary"
+            variant={status?.plan === "premium_yearly" ? "primary" : "secondary"}
             onClick={() => changePlan("premium_yearly")}
             disabled={isSaving || status?.plan === "premium_yearly"}
           >
