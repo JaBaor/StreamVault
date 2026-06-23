@@ -1,47 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { getCatalogGenres, saveCatalogGenres } from "@/lib/catalog";
+import { apiFetch } from "@/lib/api";
 import type { Genre } from "@/lib/types";
 
-export default function AdminGenresPage() {
-  const [list, setList] = useState<Genre[]>(() => getCatalogGenres());
-  const [form, setForm] = useState<Partial<Genre> | null>(null);
+type ApiGenre = { id: number; slug: string; name: string; description?: string };
 
-  const persist = (next: Genre[]) => {
-    setList(next);
-    saveCatalogGenres(next);
+function mapGenre(g: ApiGenre): Genre {
+  return { id: String(g.id), slug: g.slug, name: g.name, description: g.description ?? "" };
+}
+
+export default function AdminGenresPage() {
+  const [list, setList] = useState<Genre[]>([]);
+  const [form, setForm] = useState<Partial<Genre> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    apiFetch("/genres")
+      .then((data) => setList((data as ApiGenre[]).map(mapGenre)))
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => { load(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form?.name || !form.slug) return;
-    const genre: Genre = {
-      id: form.id ?? `g-${Date.now()}`,
-      slug: form.slug,
-      name: form.name,
-      description: form.description ?? "",
-    };
-    const exists = list.some((g) => g.id === genre.id);
-    persist(exists ? list.map((g) => (g.id === genre.id ? genre : g)) : [...list, genre]);
+    if (!form?.name) return;
+    const payload: Record<string, string> = { name: form.name };
+    if (form.description) payload.description = form.description;
+
+    if (form.id) {
+      await apiFetch(`/genres/${form.id}`, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      await apiFetch("/genres", { method: "POST", body: JSON.stringify(payload) });
+    }
+    await fetchGenres();
     setForm(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Delete genre?")) return;
-    persist(list.filter((g) => g.id !== id));
+    await apiFetch(`/genres/${id}`, { method: "DELETE" });
+    await fetchGenres();
   };
+
+  if (loading) {
+    return <div className="mt-4 text-zinc-400">Loading genres…</div>;
+  }
 
   return (
     <div>
       <div className="flex justify-between">
         <h2 className="text-lg font-semibold text-white">Genre / category CRUD</h2>
-        <Button
-          size="sm"
-          onClick={() => setForm({ slug: "", name: "", description: "" })}
-        >
+        <Button size="sm" onClick={() => setForm({ name: "", description: "" })}>
           + Add genre
         </Button>
       </div>
@@ -80,12 +94,6 @@ export default function AdminGenresPage() {
             label="Name"
             value={form.name ?? ""}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Slug"
-            value={form.slug ?? ""}
-            onChange={(e) => setForm({ ...form, slug: e.target.value })}
             required
           />
           <Input

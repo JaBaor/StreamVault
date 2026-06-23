@@ -155,7 +155,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setUser((prev) => {
         if (!prev) return prev;
-        const next = { ...prev, ...data };
+        const next = { ...prev };
+        if (data.displayName !== undefined) next.displayName = data.displayName;
+        if (data.avatarUrl !== undefined) next.avatarUrl = data.avatarUrl;
+        if (data.subscriptionPlan !== undefined) next.subscriptionPlan = data.subscriptionPlan;
+        if (data.subscriptionExpires !== undefined) next.subscriptionExpires = data.subscriptionExpires;
         setItem("user", next);
         const users = getItem<User[]>("registered-users", []);
         const idx = users.findIndex((u) => u.id === next.id);

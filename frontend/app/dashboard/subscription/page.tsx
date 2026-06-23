@@ -20,7 +20,6 @@ export default function SubscriptionPage() {
   const applyStatus = useCallback((next: SubscriptionStatus) => {
     setStatus(next);
     updateProfile({
-      role: next.isPremium ? "subscriber" : "member",
       subscriptionPlan: next.isPremium ? "premium" : "free",
       subscriptionExpires: next.expiresAt ?? undefined,
     });
