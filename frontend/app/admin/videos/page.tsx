@@ -382,15 +382,21 @@ export default function AdminVideosPage() {
               <option value="premium">Premium</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300 sm:col-span-2">
-            Description
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-zinc-300">Description</span>
+              <span className="text-xs text-zinc-500">
+                {editing.description?.length ?? 0} characters
+              </span>
+            </div>
             <textarea
               value={editing.description ?? ""}
               onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-              rows={4}
-              className="resize-none rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white focus:border-[var(--sv-orange)] focus:outline-none"
+              placeholder="Write a synopsis for this title…"
+              rows={5}
+              className="min-h-[120px] resize-y rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-[var(--sv-orange)] focus:outline-none"
             />
-          </label>
+          </div>
           {editing.type === "SERIES" && editing.id && (
             <div className="sm:col-span-2 mt-4 border-t border-zinc-700 pt-4">
               <h4 className="mb-3 font-semibold text-white">Episodes</h4>
