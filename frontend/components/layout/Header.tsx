@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/contexts/UserDataContext";
-import { genres } from "@/lib/mock-data";
+import { fetchCatalogGenres } from "@/lib/catalog";
+import type { Genre } from "@/lib/types";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -17,7 +18,12 @@ export function Header() {
   const { user, role, logout, isAdmin } = useAuth();
   const { notifications } = useUserData();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [genreList, setGenreList] = useState<Genre[]>([]);
   const unread = notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    fetchCatalogGenres().then(setGenreList).catch(() => undefined);
+  }, []);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -54,7 +60,7 @@ export function Header() {
               Genres ▾
             </button>
             <div className="invisible absolute left-0 top-full z-50 min-w-[180px] rounded-lg border border-zinc-800 bg-zinc-900 py-2 opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
-              {genres.map((g) => (
+              {genreList.map((g) => (
                 <Link
                   key={g.id}
                   href={`/genre/${g.slug}`}
@@ -164,6 +170,7 @@ export function Header() {
         <MobileMenu
           user={user}
           isAdmin={isAdmin}
+          genreList={genreList}
           onClose={() => setMenuOpen(false)}
           onLogout={logout}
         />
@@ -175,11 +182,13 @@ export function Header() {
 function MobileMenu({
   user,
   isAdmin,
+  genreList,
   onClose,
   onLogout,
 }: {
   user: { displayName: string } | null;
   isAdmin: boolean;
+  genreList: Genre[];
   onClose: () => void;
   onLogout: () => void;
 }) {
@@ -207,7 +216,7 @@ function MobileMenu({
         </Link>
       )}
       <p className="mt-2 text-xs font-semibold uppercase text-zinc-500">Genres</p>
-      {genres.map((g) => (
+      {genreList.map((g) => (
         <Link
           key={g.id}
           href={`/genre/${g.slug}`}
