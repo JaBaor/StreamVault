@@ -37,6 +37,7 @@ export default function AdminVideosPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [editingEpisode, setEditingEpisode] = useState<Partial<Episode> | null>(null);
+  const [originalEpisode, setOriginalEpisode] = useState<Partial<Episode> | null>(null);
   const [thumbnailData, setThumbnailData] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -136,6 +137,7 @@ export default function AdminVideosPage() {
       airing_status: anime.status === "ongoing" ? "ongoing" : "completed",
     });
     setThumbnailData(null);
+    setOriginalEpisode(null);
     if (anime.type === "SERIES") {
       loadEpisodes(anime.id);
     } else {
@@ -176,7 +178,7 @@ export default function AdminVideosPage() {
           <h2 className="text-lg font-semibold text-white">Movie management</h2>
           <p className="mt-1 text-sm text-zinc-500">Create and edit backend movie records.</p>
         </div>
-        <Button size="sm" onClick={() => setEditing(emptyForm)}>
+        <Button size="sm" onClick={() => { setEditing(emptyForm); setOriginalEpisode(null); }}>
           Add movie
         </Button>
       </div>
@@ -385,16 +387,26 @@ export default function AdminVideosPage() {
                         <button
                           type="button"
                           className="text-[var(--sv-orange)] hover:underline"
-                          onClick={() =>
-                            setEditingEpisode({
-                              id: ep.id,
-                              number: ep.number,
-                              title: ep.title,
-                              duration: ep.duration,
-                              videoUrl: ep.videoUrl,
-                              description: ep.description,
-                            })
-                          }
+                          onClick={async () => {
+                            setError("");
+                            try {
+                              const data = await apiFetch(`/movies/${editing.id}/episodes/${ep.id}`);
+                              const dur = data.duration_seconds
+                                ? `${Math.round(data.duration_seconds / 60)} min`
+                                : "Full movie";
+                              const epData = {
+                                id: String(data.episode_id),
+                                number: data.episode_number,
+                                title: data.title,
+                                duration: dur,
+                                videoUrl: data.video_url || "",
+                              };
+                              setOriginalEpisode(epData);
+                              setEditingEpisode(epData);
+                            } catch {
+                              setError("Could not load episode data.");
+                            }
+                          }}
                         >
                           Edit
                         </button>
@@ -462,59 +474,62 @@ export default function AdminVideosPage() {
                   }
                   className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-2"
                 />
-                <textarea
-                  placeholder="Description"
-                  value={editingEpisode?.description ?? ""}
-                  onChange={(e) =>
-                    setEditingEpisode({ ...editingEpisode, description: e.target.value })
-                  }
-                  rows={3}
-                  className="resize-none rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder:text-zinc-500 focus:border-[var(--sv-orange)] focus:outline-none sm:col-span-4"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!editingEpisode?.number || !editingEpisode?.title}
-                  onClick={async () => {
-                    if (!editingEpisode?.number || !editingEpisode?.title) return;
-                    setError("");
-                    try {
-                      const dur = editingEpisode.duration
-                        ? parseInt(editingEpisode.duration)
-                        : undefined;
-                      const isUpdate = !!editingEpisode.id;
-                      const body = {
-                        episode_number: editingEpisode.number,
-                        title: editingEpisode.title,
-                        description: editingEpisode.description || undefined,
-                        video_url: editingEpisode.videoUrl || undefined,
-                        duration: dur,
-                      };
-                      if (isUpdate) {
-                        await apiFetch(
-                          `/movies/${editing.id}/episodes/${editingEpisode.id}`,
-                          { method: "PUT", body: JSON.stringify(body) }
-                        );
-                      } else {
-                        await apiFetch(`/movies/${editing.id}/episodes`, {
-                          method: "POST",
-                          body: JSON.stringify(body),
-                        });
-                      }
-                      setEditingEpisode(null);
-                      loadEpisodes(editing.id!);
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Could not save episode.");
-                    }
-                  }}
-                >
-                  {editingEpisode?.id ? "Update" : "Add episode"}
-                </Button>
-                {editingEpisode?.id && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditingEpisode(null)}>
-                    Cancel
-                  </Button>
-                )}
+                {(() => {
+                  const hasChanges = !editingEpisode?.id || (
+                    editingEpisode.number !== originalEpisode?.number ||
+                    editingEpisode.title !== originalEpisode?.title ||
+                    editingEpisode.duration !== originalEpisode?.duration ||
+                    editingEpisode.videoUrl !== originalEpisode?.videoUrl
+                  );
+                  return (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!editingEpisode?.number || !editingEpisode?.title || !hasChanges}
+                        onClick={async () => {
+                          if (!editingEpisode?.number || !editingEpisode?.title || !hasChanges) return;
+                          setError("");
+                          try {
+                            const dur = editingEpisode.duration
+                              ? parseInt(editingEpisode.duration)
+                              : undefined;
+                            const isUpdate = !!editingEpisode.id;
+                            const body = {
+                              episode_number: editingEpisode.number,
+                              title: editingEpisode.title,
+                              video_url: editingEpisode.videoUrl || undefined,
+                              duration: dur,
+                            };
+                            if (isUpdate) {
+                              await apiFetch(
+                                `/movies/${editing.id}/episodes/${editingEpisode.id}`,
+                                { method: "PUT", body: JSON.stringify(body) }
+                              );
+                            } else {
+                              await apiFetch(`/movies/${editing.id}/episodes`, {
+                                method: "POST",
+                                body: JSON.stringify(body),
+                              });
+                            }
+                            setEditingEpisode(null);
+                            setOriginalEpisode(null);
+                            loadEpisodes(editing.id!);
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : "Could not save episode.");
+                          }
+                        }}
+                      >
+                        {editingEpisode?.id ? "Update" : "Add episode"}
+                      </Button>
+                      {editingEpisode?.id && (
+                        <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingEpisode(null); setOriginalEpisode(null); }}>
+                          Cancel
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -522,7 +537,7 @@ export default function AdminVideosPage() {
             <Button type="submit" disabled={isSaving}>
               {isSaving ? "Saving..." : "Save"}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+            <Button type="button" variant="ghost" onClick={() => { setEditing(null); setOriginalEpisode(null); }}>
               Cancel
             </Button>
           </div>
