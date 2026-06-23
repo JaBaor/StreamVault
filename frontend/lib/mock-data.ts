@@ -155,7 +155,6 @@ function buildEpisodes(animeId: string, count: number, premiumFrom = 2): Episode
       title: `Episode ${n}`,
       duration: `${22 + (n % 3)} min`,
       videoUrl: SAMPLE_VIDEO,
-      thumbnailUrl: `https://picsum.photos/seed/sv-${animeId}-ep${n}/640/360`,
       isPremium: n >= premiumFrom,
     };
   });

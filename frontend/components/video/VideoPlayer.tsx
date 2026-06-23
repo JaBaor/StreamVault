@@ -139,7 +139,6 @@ export function VideoPlayer({
         className="h-full w-full"
         playsInline
         preload="metadata"
-        poster={episode.thumbnailUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onPlay={() => setPlaying(true)}

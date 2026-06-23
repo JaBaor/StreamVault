@@ -23,7 +23,7 @@ function mapEpisode(row) {
 async function getEpisodesByVideoId(videoId) {
   const [rows] = await pool.query(
     `SELECT id, id AS episode_id, video_id, season_number, episode_number,
-            title, description, video_url, storage_key, thumbnail_url,
+            title, description, video_url, storage_key,
             duration_seconds, status, created_at, updated_at
      FROM episodes
      WHERE video_id = ? AND status = 'ACTIVE'
@@ -36,7 +36,7 @@ async function getEpisodesByVideoId(videoId) {
 async function getEpisodeById(episodeId) {
   const [rows] = await pool.query(
     `SELECT id, id AS episode_id, video_id, season_number, episode_number,
-            title, description, video_url, storage_key, thumbnail_url,
+            title, description, video_url, storage_key,
             duration_seconds, status, created_at, updated_at
      FROM episodes WHERE id = ? AND status = 'ACTIVE'`,
     [episodeId]
@@ -47,15 +47,15 @@ async function getEpisodeById(episodeId) {
 async function createEpisode(fields) {
   const {
     video_id, season_number, episode_number, title, description,
-    video_url, thumbnail_url, duration_seconds, duration,
+    video_url, duration_seconds, duration,
   } = fields;
 
   const durSec = duration_seconds || (duration ? duration * 60 : null);
 
   const [result] = await pool.query(
     `INSERT INTO episodes
-     (video_id, season_number, episode_number, title, description, video_url, thumbnail_url, duration_seconds, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+     (video_id, season_number, episode_number, title, description, video_url, duration_seconds, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
     [
       video_id,
       season_number || 1,
@@ -63,7 +63,6 @@ async function createEpisode(fields) {
       title,
       description || null,
       normalizeVideoInput(video_url),
-      thumbnail_url || null,
       durSec,
     ]
   );
@@ -74,7 +73,7 @@ async function createEpisode(fields) {
 async function updateEpisode(episodeId, fields) {
   const allowed = [
     "season_number", "episode_number", "title", "description",
-    "video_url", "thumbnail_url", "duration_seconds",
+    "video_url", "duration_seconds",
   ];
   const aliases = { duration: "duration_seconds" };
 

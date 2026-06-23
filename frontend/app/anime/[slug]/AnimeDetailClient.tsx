@@ -93,17 +93,8 @@ export function AnimeDetailClient({
             <li key={`${ep.id}:${i}`}>
               <Link
                 href={`/watch/${anime.id}/${ep.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-zinc-900"
+                className="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-zinc-900"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={ep.thumbnailUrl}
-                  alt=""
-                  className="h-14 w-24 shrink-0 rounded object-cover"
-                  width={96}
-                  height={56}
-                  loading="lazy"
-                />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-white">
                     {ep.number}. {ep.title}

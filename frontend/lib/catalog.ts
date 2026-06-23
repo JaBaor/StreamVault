@@ -123,7 +123,6 @@ function movieToEpisode(movie: BackendMovie | Anime): Episode {
   const id = isAnime ? movie.id : String(movie.movie_id);
   const title = isAnime ? movie.title : movie.title;
   const duration = isAnime ? "Full movie" : String(movie.duration || "Full movie");
-  const thumbnail = isAnime ? movie.posterUrl : absoluteAsset(movie.poster_url);
   const video =
     !isAnime && (movie.video_url || movie.storage_key)
       ? absoluteAsset(movie.video_url || movie.storage_key)
@@ -135,7 +134,6 @@ function movieToEpisode(movie: BackendMovie | Anime): Episode {
     title,
     duration,
     videoUrl: video,
-    thumbnailUrl: thumbnail,
     isPremium: isAnime ? movie.isPremium : movie.access_level === "premium",
   };
 }
@@ -283,7 +281,6 @@ type BackendEpisode = {
   description?: string | null;
   video_url?: string | null;
   storage_key?: string | null;
-  thumbnail_url?: string | null;
   duration_seconds?: number | null;
 };
 
@@ -296,7 +293,6 @@ function normalizeBackendEpisode(row: BackendEpisode, isPremium = false): Episod
     title: row.title,
     duration: dur,
     videoUrl: absoluteAsset(row.video_url || row.storage_key),
-    thumbnailUrl: absoluteAsset(row.thumbnail_url),
     isPremium,
     description: row.description || undefined,
   };

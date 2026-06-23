@@ -24,7 +24,6 @@ export interface Episode {
   title: string;
   duration: string;
   videoUrl: string;
-  thumbnailUrl: string;
   isPremium: boolean;
   description?: string;
 }
