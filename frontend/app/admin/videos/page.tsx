@@ -359,11 +359,13 @@ export default function AdminVideosPage() {
             value={editing.trailer_url ?? ""}
             onChange={(e) => setEditing({ ...editing, trailer_url: e.target.value })}
           />
-          <Input
-            label="Movie URL"
-            value={editing.video_url ?? ""}
-            onChange={(e) => setEditing({ ...editing, video_url: e.target.value })}
-          />
+          {editing.type === "MOVIE" && (
+            <Input
+              label="Movie URL"
+              value={editing.video_url ?? ""}
+              onChange={(e) => setEditing({ ...editing, video_url: e.target.value })}
+            />
+          )}
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-300">
             Access
             <select
