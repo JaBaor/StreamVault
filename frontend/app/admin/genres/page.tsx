@@ -18,7 +18,7 @@ export default function AdminGenresPage() {
   const [loading, setLoading] = useState(true);
 
   const load = () => {
-    apiFetch("/genres")
+    return apiFetch("/genres")
       .then((data) => setList((data as ApiGenre[]).map(mapGenre)))
       .catch(() => undefined)
       .finally(() => setLoading(false));
@@ -37,14 +37,14 @@ export default function AdminGenresPage() {
     } else {
       await apiFetch("/genres", { method: "POST", body: JSON.stringify(payload) });
     }
-    await fetchGenres();
+    await load();
     setForm(null);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete genre?")) return;
     await apiFetch(`/genres/${id}`, { method: "DELETE" });
-    await fetchGenres();
+    await load();
   };
 
   if (loading) {
