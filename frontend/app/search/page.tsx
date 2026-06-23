@@ -12,7 +12,7 @@ function SearchContent() {
   const params = useSearchParams();
   const initialQ = params.get("q") ?? "";
   const [query, setQuery] = useState(initialQ);
-  const [genre, setGenre] = useState("");
+  const [genres, setGenres] = useState<string[]>([]);
   const [status, setStatus] = useState<"" | "ongoing" | "completed">("");
   const [sort, setSort] = useState<"rating" | "year" | "title">("rating");
   const [all, setAll] = useState<Anime[]>(() => getCatalogAnime());
@@ -26,6 +26,12 @@ function SearchContent() {
     void fetchCatalogGenres().then(setGenreList).catch(() => undefined);
   }, []);
 
+  const toggleGenre = (slug: string) => {
+    setGenres((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+  };
+
   const results = useMemo(() => {
     let list = [...all];
     if (query.trim()) {
@@ -37,34 +43,54 @@ function SearchContent() {
           a.titleJp?.toLowerCase().includes(q)
       );
     }
-    if (genre) {
-      const g = genreList.find((x) => x.slug === genre);
-      if (g) list = list.filter((a) => a.genreIds.includes(g.id));
+    if (genres.length > 0) {
+      const gids = new Set(genreList.filter((g) => genres.includes(g.slug)).map((g) => g.id));
+      if (gids.size > 0) list = list.filter((a) => a.genreIds.some((gid) => gids.has(gid)));
     }
     if (status) list = list.filter((a) => a.status === status);
     if (sort === "rating") list.sort((a, b) => b.rating - a.rating);
     else if (sort === "year") list.sort((a, b) => b.year - a.year);
     else list.sort((a, b) => a.title.localeCompare(b.title));
     return list;
-  }, [all, query, genre, status, sort, genreList]);
+  }, [all, query, genres, status, sort, genreList]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold text-white">Browse & search</h1>
-      <div className="mt-6 grid gap-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <input
-          type="search"
-          placeholder="Search titles…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-white focus:border-[var(--sv-orange)] focus:outline-none lg:col-span-2"
-        />
+      <div className="mt-6 space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            placeholder="Search titles…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white focus:border-[var(--sv-orange)] focus:outline-none"
+          />
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as typeof status)}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white"
+          >
+            <option value="">Any status</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white"
+          >
+            <option value="rating">Top rated</option>
+            <option value="year">Newest year</option>
+            <option value="title">A–Z</option>
+          </select>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setGenre("")}
-            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-              !genre
+            onClick={() => setGenres([])}
+            className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+              genres.length === 0
                 ? "border-[var(--sv-orange)] bg-[var(--sv-orange)]/10 text-[var(--sv-orange)]"
                 : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
             }`}
@@ -75,9 +101,9 @@ function SearchContent() {
             <button
               key={g.id}
               type="button"
-              onClick={() => setGenre(genre === g.slug ? "" : g.slug)}
-              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                genre === g.slug
+              onClick={() => toggleGenre(g.slug)}
+              className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                genres.includes(g.slug)
                   ? "border-[var(--sv-orange)] bg-[var(--sv-orange)]/10 text-[var(--sv-orange)]"
                   : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
               }`}
@@ -86,24 +112,6 @@ function SearchContent() {
             </button>
           ))}
         </div>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as typeof status)}
-          className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white"
-        >
-          <option value="">Any status</option>
-          <option value="ongoing">Ongoing</option>
-          <option value="completed">Completed</option>
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as typeof sort)}
-          className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-white sm:col-span-2 lg:col-span-1"
-        >
-          <option value="rating">Top rated</option>
-          <option value="year">Newest year</option>
-          <option value="title">A–Z</option>
-        </select>
       </div>
       <p className="mt-4 text-sm text-zinc-500">{results.length} results</p>
       <div className="mt-6 flex flex-wrap gap-4">
