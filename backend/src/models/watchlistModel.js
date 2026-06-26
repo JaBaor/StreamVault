@@ -56,12 +56,4 @@ async function getWatchlist(userId, { page = 1, limit = 10 }) {
   };
 }
 
-async function isInWatchlist(userId, movieId) {
-  const [[{ count }]] = await pool.query(
-    "SELECT COUNT(*) AS count FROM watchlist WHERE user_id = ? AND video_id = ?",
-    [userId, movieId]
-  );
-  return Number(count) > 0;
-}
-
-module.exports = { addMovie, removeMovie, getWatchlist, isInWatchlist };
+module.exports = { addMovie, removeMovie, getWatchlist };
